@@ -21,10 +21,13 @@ const createInitialForm = (subjects) => ({
   titulo: '',
   descripcion: '',
   materiaId: subjects[0]?.id?.toString() ?? '',
+  fechaPublicacion: getTodayKey(),
   fechaEntrega: '',
   prioridad: 'media',
   estado: 'pendiente',
+  tiempoEstimadoHoras: '',
   recordatorio: false,
+  notaPersonal: '',
 });
 
 const initialFilters = {
@@ -32,6 +35,8 @@ const initialFilters = {
   estado: 'todos',
   prioridad: 'todas',
   materiaId: 'todas',
+  tipo: 'todos',
+  origen: 'todos',
   orden: 'asc',
 };
 
@@ -75,11 +80,24 @@ export default function Tasks() {
   const subjectMap = useMemo(() => new Map(subjects.map((subject) => [subject.id, subject])), [subjects]);
 
   const filteredTasks = useMemo(() => {
+    const query = filters.search.trim().toLowerCase();
+
     return tasks
       .filter((task) => (filters.estado === 'todos' ? true : task.estado === filters.estado))
       .filter((task) => (filters.prioridad === 'todas' ? true : task.prioridad === filters.prioridad))
       .filter((task) => (filters.materiaId === 'todas' ? true : task.materiaId === Number(filters.materiaId)))
-      .filter((task) => task.titulo.toLowerCase().includes(filters.search.trim().toLowerCase()))
+      .filter((task) => (filters.tipo === 'todos' ? true : task.tipo === filters.tipo))
+      .filter((task) => (filters.origen === 'todos' ? true : task.origen === filters.origen))
+      .filter((task) => {
+        if (!query) {
+          return true;
+        }
+
+        return [task.titulo, task.descripcion, task.docenteNombre, task.grupoNombre, task.instrucciones, task.notaPersonal]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      })
       .sort((taskA, taskB) => compareByDueDate(taskA, taskB, filters.orden));
   }, [filters, tasks]);
 
@@ -87,6 +105,8 @@ export default function Tasks() {
   const nextWeekKey = getUpcomingLimitKey(7);
   const pendingTasks = tasks.filter((task) => task.estado === 'pendiente');
   const completedTasks = tasks.filter((task) => task.estado === 'completada');
+  const personalTasks = tasks.filter((task) => task.tipo === 'personal');
+  const assignedTasks = tasks.filter((task) => task.tipo === 'asignada');
   const overdueTasks = pendingTasks.filter((task) => task.fechaEntrega < todayKey);
   const nextDeliveries = pendingTasks.filter((task) => task.fechaEntrega >= todayKey && task.fechaEntrega <= nextWeekKey);
 
@@ -139,10 +159,13 @@ export default function Tasks() {
       titulo: task.titulo,
       descripcion: task.descripcion,
       materiaId: String(task.materiaId),
+      fechaPublicacion: task.fechaPublicacion,
       fechaEntrega: task.fechaEntrega,
       prioridad: task.prioridad,
       estado: task.estado,
+      tiempoEstimadoHoras: String(task.tiempoEstimadoHoras ?? ''),
       recordatorio: Boolean(task.recordatorio),
+      notaPersonal: task.notaPersonal ?? '',
     });
     setErrors({});
     setFeedback(null);
@@ -193,10 +216,10 @@ export default function Tasks() {
           <div>
             <span className="soft-chip soft-chip--cool">CRUD de tareas</span>
             <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Controla tus tareas con filtros utiles y una vista clara de fechas, estado y prioridad.
+              Controla tus tareas personales y revisa las asignadas por docente en una sola lista operativa.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Aqui solo administras tus propias entregas, con busqueda por titulo, filtros por estado, prioridad y materia.
+              Puedes crear, editar y eliminar tareas personales. Las asignadas se muestran con sus datos protegidos y solo permiten avance de estado.
             </p>
           </div>
 
@@ -232,8 +255,8 @@ export default function Tasks() {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <SectionCard
           eyebrow={editingId ? 'Edicion activa' : 'Agregar tarea'}
-          title={editingId ? 'Actualiza una tarea' : 'Registra una nueva tarea'}
-          description="Incluye titulo, materia, fecha, prioridad, estado y recordatorio."
+          title={editingId ? 'Actualiza una tarea personal' : 'Registra una nueva tarea personal'}
+          description="Incluye materia, fechas, prioridad, tiempo estimado, nota y recordatorio."
           Icon={FiPlusCircle}
         >
           <TaskForm
@@ -252,7 +275,7 @@ export default function Tasks() {
           <SectionCard
             eyebrow={`${filteredTasks.length} tarea(s)`}
             title="Listado filtrable de tareas"
-            description="Busca por titulo y afina la vista por estado, prioridad, materia o fecha de entrega."
+            description="Busca y filtra por estado, prioridad, materia, tipo, origen o fecha de entrega."
             Icon={FiFilter}
           >
             <TaskFilters
@@ -266,8 +289,8 @@ export default function Tasks() {
 
           <SectionCard
             eyebrow={`${nextDeliveries.length} proximas`}
-            title="Tus tareas registradas"
-            description="Lista ordenada por fecha con estados, prioridad, botones de edicion y control de completado."
+            title="Tareas personales y asignadas"
+            description={`${personalTasks.length} personales y ${assignedTasks.length} asignadas, ordenadas con acciones segun el origen.`}
             Icon={FiList}
           >
             <TaskList
