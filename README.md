@@ -13,6 +13,7 @@ Proyecto frontend en React + Vite + Tailwind para la materia de Programación We
 
 ## Actualizaciones
 Implementación de la capa operativa del módulo estudiante
+
 Se desarrolló la ampliación funcional del rol estudiante, incorporando la gestión completa de tareas personales, la recepción de tareas asignadas por docente, la vista de agenda académica, recordatorios visuales y mejoras generales del dashboard. También se actualizó el modelo de datos del estudiante para soportar estados, origen de tareas, tiempos estimados y seguimiento de entregas.
 
 ## Credenciales demo
