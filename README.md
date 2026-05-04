@@ -1,33 +1,53 @@
-# StudentTask - avance de proyecto
+# StudentTask
 
-Proyecto frontend en React + Vite + Tailwind para la materia de Programación Web.
+StudentTask es un sistema web académico desarrollado como proyecto para la materia de Programación Web. Su objetivo es apoyar a los estudiantes en la organización, seguimiento y análisis de sus actividades escolares mediante tareas, materias, agenda, reportes y métricas de desempeño académico.
 
-## Funcionalidades
-- Inicio de sesión con cuenta demo y usuarios registrados.
+## Descripción del proyecto
+
+El sistema está orientado principalmente al rol de estudiante, permitiendo registrar tareas personales, consultar actividades pendientes, organizar materias, visualizar entregas próximas y analizar el avance académico mediante reportes y seguimiento de cumplimiento.
+
+Además, el proyecto contempla una ampliación futura para roles de docente y administrador, donde los docentes podrán asignar tareas a grupos y los administradores podrán gestionar usuarios, grupos y configuraciones generales.
+
+## Tecnologías utilizadas
+
+### Frontend
+- React
+- Vite
+- Tailwind CSS
+- React Router DOM
+- LocalStorage para persistencia temporal
+
+### Base de datos
+- MySQL Community Server
+- MySQL Workbench
+- Script SQL incluido en la carpeta `database`
+
+### Herramientas de desarrollo
+- Visual Studio Code
+- GitHub
+- Node.js y npm
+
+## Funcionalidades implementadas
+
+- Inicio de sesión con cuenta demo.
 - Registro local de nuevos estudiantes.
 - Protección de rutas privadas.
-- Panel académico con métricas de avance.
-- Materias y tareas con almacenamiento local.
-- Agenda, reportes, seguimiento académico, perfil y configuración.
-- Script SQL base para MariaDB.
+- Dashboard académico del estudiante.
+- Gestión de materias.
+- Gestión de tareas personales.
+- Agenda académica.
+- Tareas asignadas en modo demostrativo.
+- Reportes del estudiante.
+- Seguimiento académico.
+- Perfil del estudiante.
+- Configuración de usuario.
+- Ajustes visuales de interfaz.
+- Base de datos MySQL anexada mediante script SQL.
 
 ## Credenciales demo
-- Correo: `alumno@itoaxaca.edu.mx`
-- Contraseña: `12345678`
 
-También puedes crear una cuenta desde `/registro`.
+Para probar el sistema se puede utilizar la siguiente cuenta:
 
-## Ejecutar proyecto
-```bash
-npm install
-npm run dev
-```
-
-## Estructura clave
-- `src/pages/Login.jsx`
-- `src/pages/Dashboard.jsx`
-- `src/pages/Subjects.jsx`
-- `src/pages/Tasks.jsx`
-- `src/pages/Settings.jsx`
-- `database/control_tareas_db.sql`
-- `docs/roadmap-componentes.md`
+```txt
+Correo: alumno@itoaxaca.edu.mx
+Contraseña: 12345678.md`
