@@ -1,6 +1,5 @@
 import { getDefaultPrivateRoute, syncSettings } from './settingsService';
 import {
-  DEMO_LOGIN_EMAILS,
   DEMO_PROFILE,
   STORAGE_KEYS,
   readStorage,
@@ -9,6 +8,7 @@ import {
 } from './storageService';
 import { clearAuthToken, extractApiMessage, isApiFallbackError, persistAuthToken, request } from './apiClient';
 import { normalizeApiErrors, normalizeEmail, normalizeProfilePayload, unwrapApiData } from './apiMappers';
+import { createUser, findUserByEmail } from './userService';
 
 const socialProviders = {
   google: 'Google',
@@ -27,11 +27,26 @@ const buildSession = (profile, overrides = {}) => ({
   loginAt: new Date().toISOString(),
   authMethod: 'credentials',
   authProvider: 'email',
-  authProviderLabel: 'Correo y contrasena',
+  authProviderLabel: 'Correo y contraseña',
   ...overrides,
 });
 
 const getProfileSnapshot = () => readStorage(STORAGE_KEYS.profile, DEMO_PROFILE);
+
+const persistLocalUserSession = (profile, overrides = {}) => {
+  const normalizedProfile = {
+    ...DEMO_PROFILE,
+    ...profile,
+    rol: 'Estudiante',
+  };
+  const session = buildSession(normalizedProfile, overrides);
+
+  clearAuthToken();
+  writeStorage(STORAGE_KEYS.profile, normalizedProfile);
+  writeStorage(STORAGE_KEYS.session, session);
+
+  return session;
+};
 
 const persistAuthState = (payload, overrides = {}) => {
   const responseData = unwrapApiData(payload);
@@ -63,21 +78,18 @@ const getSession = () => readStorage(STORAGE_KEYS.session, null);
 const isAuthenticated = () => Boolean(getSession());
 
 const loginWithLocalCredentials = ({ email, password }) => {
-  const profile = getProfileSnapshot();
   const inputEmail = normalizeEmail(email);
-  const validEmails = new Set([...DEMO_LOGIN_EMAILS, normalizeEmail(profile.email)]);
+  const user = findUserByEmail(inputEmail);
 
-  if (!validEmails.has(inputEmail)) {
-    return { ok: false, message: 'El correo no esta registrado.' };
+  if (!user) {
+    return { ok: false, message: 'El correo no está registrado.' };
   }
 
-  if (String(password ?? '') !== profile.password) {
-    return { ok: false, message: 'La contrasena es incorrecta.' };
+  if (String(password ?? '') !== user.password) {
+    return { ok: false, message: 'La contraseña es incorrecta.' };
   }
 
-  const session = buildSession(profile);
-  clearAuthToken();
-  writeStorage(STORAGE_KEYS.session, session);
+  const session = persistLocalUserSession(user);
   return { ok: true, session, redirectTo: getDefaultPrivateRoute() };
 };
 
@@ -107,17 +119,31 @@ const loginUser = async ({ email, password }) => {
 
     return {
       ok: false,
-      message: extractApiMessage(error.payload, 'No se pudo iniciar sesion.'),
+      message: extractApiMessage(error.payload, 'No se pudo iniciar sesión.'),
       errors: normalizeApiErrors(error.payload),
     };
   }
+};
+
+const registerUser = (data) => {
+  const result = createUser(data);
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    user: result.user,
+    message: 'Tu cuenta se creó correctamente.',
+  };
 };
 
 const loginWithProvider = async (provider) => {
   const providerLabel = socialProviders[provider];
 
   if (!providerLabel) {
-    return { ok: false, message: 'El proveedor seleccionado no esta disponible.' };
+    return { ok: false, message: 'El proveedor seleccionado no está disponible.' };
   }
 
   const profile = getProfileSnapshot();
@@ -149,7 +175,7 @@ const syncCurrentUser = async () => {
 
     return {
       ok: false,
-      message: extractApiMessage(error.payload, 'No se pudo recuperar la sesion actual.'),
+      message: extractApiMessage(error.payload, 'No se pudo recuperar la sesión actual.'),
       errors: normalizeApiErrors(error.payload),
     };
   }
@@ -162,7 +188,7 @@ const logoutUser = async () => {
     await request('/auth/logout', { method: 'POST' });
   } catch (error) {
     if (!isApiFallbackError(error) && error?.status !== 401) {
-      errorMessage = extractApiMessage(error.payload, 'No se pudo cerrar la sesion.');
+      errorMessage = extractApiMessage(error.payload, 'No se pudo cerrar la sesión.');
     }
   }
 
@@ -177,5 +203,6 @@ export {
   loginUser,
   loginWithProvider,
   logoutUser,
+  registerUser,
   syncCurrentUser,
 };

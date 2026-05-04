@@ -6,8 +6,8 @@ export default function SubjectList({ items, onEdit, onDelete }) {
   if (items.length === 0) {
     return (
       <EmptyState
-        title="Aun no tienes materias registradas"
-        description="Crea tu primera materia para empezar a organizar tareas, colores y entregas por asignatura."
+        title="Aún no tienes materias"
+        description="Crea una materia para organizar tus entregas por asignatura."
       />
     );
   }
@@ -17,17 +17,17 @@ export default function SubjectList({ items, onEdit, onDelete }) {
       {items.map((subject) => (
         <article
           key={subject.id}
-          className="rounded-[26px] border border-white/70 bg-white/[0.76] p-5 shadow-[0_16px_32px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_40px_rgba(37,99,235,0.12)]"
+          className="content-card interactive-card p-5"
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-[18px] shadow-inner" style={{ backgroundColor: subject.color }}>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-inner" style={{ backgroundColor: subject.color }}>
                   <FiBookOpen className="text-lg text-white" />
                 </span>
                 <div className="min-w-0">
                   <h3 className="truncate text-lg font-semibold text-slate-900">{subject.nombre}</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">{subject.descripcion || 'Sin descripcion todavia.'}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">{subject.descripcion || 'Sin descripción.'}</p>
                 </div>
               </div>
 
@@ -40,7 +40,7 @@ export default function SubjectList({ items, onEdit, onDelete }) {
                 </span>
                 {subject.nextDue ? (
                   <span className="rounded-full bg-sky-50 px-3 py-1.5 font-semibold text-sky-700">
-                    Proxima: {formatShortDate(subject.nextDue)}
+                    Próxima: {formatShortDate(subject.nextDue)}
                   </span>
                 ) : null}
               </div>
@@ -56,12 +56,12 @@ export default function SubjectList({ items, onEdit, onDelete }) {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 md:justify-end">
-              <button type="button" onClick={() => onEdit(subject)} className="secondary-btn flex items-center gap-2">
+            <div className="flex flex-wrap gap-2 md:justify-end">
+              <button type="button" onClick={() => onEdit(subject)} className="secondary-btn text-sm">
                 <FiEdit3 className="text-sm" />
                 Editar
               </button>
-              <button type="button" onClick={() => onDelete(subject)} className="danger-btn flex items-center gap-2">
+              <button type="button" onClick={() => onDelete(subject)} className="danger-btn text-sm">
                 <FiTrash2 className="text-sm" />
                 Eliminar
               </button>

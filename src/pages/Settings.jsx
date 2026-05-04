@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { FiMonitor, FiRefreshCw, FiSave, FiSettings, FiSliders } from 'react-icons/fi';
 import MainLayout from '../layout/MainLayout';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import { getSettings, syncSettings, updateSettings } from '../services/settingsService';
 import { resetAppData } from '../services/storageService';
 
 const viewOptions = [
-  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'dashboard', label: 'Inicio' },
   { value: 'materias', label: 'Materias' },
   { value: 'tareas', label: 'Tareas' },
+  { value: 'agenda', label: 'Agenda' },
+  { value: 'tareas-asignadas', label: 'Tareas asignadas' },
+  { value: 'reportes', label: 'Reportes' },
+  { value: 'seguimiento', label: 'Seguimiento académico' },
   { value: 'perfil', label: 'Perfil' },
-  { value: 'configuracion', label: 'Configuracion' },
+  { value: 'configuracion', label: 'Configuración' },
 ];
 
 export default function Settings() {
@@ -54,48 +59,36 @@ export default function Settings() {
 
   return (
     <MainLayout
-      title="Configuracion"
-      subtitle="Ajusta tus preferencias personales sin tocar configuraciones globales ni modulos administrativos."
+      title="Configuración"
+      subtitle="Personaliza tu experiencia de estudio."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">Preferencias personales</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Deja el sistema listo para tu forma de estudiar.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Aqui controlas solo idioma, vista inicial, recordatorios y una base preparada para tema visual futuro.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[24px] bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Idioma</p>
-              <p className="mt-3 text-2xl font-black text-slate-900">{settings.idioma === 'en' ? 'English' : 'Espanol'}</p>
-            </div>
-            <div className="rounded-[24px] bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Vista inicial</p>
-              <p className="mt-3 text-2xl font-black text-slate-900">
-                {viewOptions.find((option) => option.value === settings.vistaDefault)?.label ?? 'Dashboard'}
-              </p>
-            </div>
-            <div className="rounded-[24px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 px-4 py-5 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
-              <p className="text-xs uppercase tracking-[0.28em] text-white/[0.45]">Recordatorios</p>
-              <p className="mt-3 text-2xl font-black">{settings.recordatoriosActivos ? 'Activos' : 'Pausados'}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Preferencias personales"
+        title="Deja el sistema listo para tu forma de estudiar."
+        description="Elige idioma, vista inicial, recordatorios y tema visual."
+        stats={[
+          { label: 'Idioma', value: settings.idioma === 'en' ? 'English' : 'Español', helper: 'Idioma de interfaz.', Icon: FiSettings },
+          {
+            label: 'Vista inicial',
+            value: viewOptions.find((option) => option.value === settings.vistaDefault)?.label ?? 'Inicio',
+            helper: 'Pantalla al entrar.',
+            Icon: FiMonitor,
+          },
+          {
+            label: 'Recordatorios',
+            value: settings.recordatoriosActivos ? 'Activos' : 'Pausados',
+            helper: 'Visibilidad de tareas clave.',
+            tone: 'primary',
+            Icon: FiSliders,
+          },
+        ]}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <SectionCard
           eyebrow="Preferencias"
-          title="Configuracion del panel"
-          description="Los cambios se guardan en cache local y se envian a la API cuando esta disponible."
+          title="Configuración del panel"
+          description="Tus preferencias se guardan en este dispositivo."
           Icon={FiSettings}
         >
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -103,7 +96,7 @@ export default function Settings() {
               <div>
                 <label className="text-sm font-medium text-slate-600">Idioma</label>
                 <select name="idioma" value={settings.idioma} onChange={handleChange} className="field-control">
-                  <option value="es">Espanol</option>
+                  <option value="es">Español</option>
                   <option value="en">English</option>
                 </select>
               </div>
@@ -127,11 +120,11 @@ export default function Settings() {
                 <option value="oscuro">Oscuro</option>
               </select>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                La preferencia se guarda desde ahora y queda preparada para una futura version visual mas completa del tema.
+                El tema se aplicará a las vistas que lo soporten.
               </p>
             </div>
 
-            <label className="flex items-center gap-4 rounded-[24px] border border-white/70 bg-white/[0.74] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
+            <label className="content-card flex items-center gap-4 p-4">
               <input
                 type="checkbox"
                 name="recordatoriosActivos"
@@ -142,7 +135,7 @@ export default function Settings() {
               <div>
                 <p className="font-semibold text-slate-700">Recordatorios activos</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Mantiene visible la preferencia para tareas que requieren seguimiento mas atento.
+                  Mantiene visibles las tareas que requieren seguimiento más atento.
                 </p>
               </div>
             </label>
@@ -150,7 +143,7 @@ export default function Settings() {
             <div className="flex flex-wrap items-center gap-3">
               <button type="submit" className="primary-btn inline-flex items-center gap-2">
                 <FiSave className="text-base" />
-                Guardar configuracion
+                Guardar configuración
               </button>
               {saved ? <span className="soft-chip soft-chip--cool">Preferencias actualizadas</span> : null}
             </div>
@@ -161,19 +154,19 @@ export default function Settings() {
           <SectionCard
             eyebrow="Estado actual"
             title="Resumen de preferencias"
-            description="Un vistazo rapido a la configuracion que ya tienes guardada."
+            description="Un vistazo rápido a tus preferencias."
             Icon={FiSliders}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 { label: 'Tema', value: settings.tema === 'oscuro' ? 'Oscuro' : 'Claro' },
-                { label: 'Idioma', value: settings.idioma === 'en' ? 'English' : 'Espanol' },
-                { label: 'Vista inicial', value: viewOptions.find((option) => option.value === settings.vistaDefault)?.label ?? 'Dashboard' },
+                { label: 'Idioma', value: settings.idioma === 'en' ? 'English' : 'Español' },
+                { label: 'Vista inicial', value: viewOptions.find((option) => option.value === settings.vistaDefault)?.label ?? 'Inicio' },
                 { label: 'Recordatorios', value: settings.recordatoriosActivos ? 'Activos' : 'Pausados' },
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-[22px] border border-white/70 bg-white/[0.74] px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]"
+                  className="content-card px-4 py-4"
                 >
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{item.label}</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{item.value}</p>
@@ -184,19 +177,19 @@ export default function Settings() {
 
           <SectionCard
             eyebrow="Mantenimiento"
-            title="Restablecer datos demo"
-            description="Si quieres empezar de nuevo para la entrega, puedes restaurar perfil, materias, tareas y configuracion base."
+            title="Restablecer datos"
+            description="Vuelve a la información inicial de materias, tareas y preferencias."
             Icon={FiMonitor}
           >
-            <div className="rounded-[24px] border border-dashed border-slate-200 bg-white/[0.72] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
+            <div className="content-card border-dashed p-5">
               <p className="text-sm leading-7 text-slate-600">
-                Esta accion borra la sesion activa y vuelve a cargar los datos demo iniciales del estudiante con persistencia local.
+                Esta acción cierra tu sesión y restaura los datos de trabajo iniciales. Tus cuentas guardadas se conservan.
               </p>
 
               <button
                 type="button"
                 onClick={() => {
-                  if (!window.confirm('Se restableceran los datos demo del estudiante. Deseas continuar?')) {
+                  if (!window.confirm('Se restablecerán los datos iniciales. ¿Deseas continuar?')) {
                     return;
                   }
 

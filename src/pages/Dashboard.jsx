@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiAlertCircle,
+  FiActivity,
+  FiBarChart2,
   FiBell,
   FiBookOpen,
   FiCalendar,
@@ -12,9 +14,11 @@ import {
 } from 'react-icons/fi';
 import MainLayout from '../layout/MainLayout';
 import EmptyState from '../components/EmptyState';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
 import { getSession } from '../services/authService';
+import { getDashboardAnalytics } from '../services/analyticsService';
 import { getSubjects, syncSubjects } from '../services/subjectService';
 import { getTasks, syncTasks } from '../services/taskService';
 import {
@@ -41,6 +45,8 @@ const quickLinks = [
   { to: '/materias', label: 'Agregar materia', Icon: FiBookOpen },
   { to: '/agenda', label: 'Ver agenda', Icon: FiCalendar },
   { to: '/tareas-asignadas', label: 'Tareas asignadas', Icon: FiClipboard },
+  { to: '/reportes', label: 'Reportes', Icon: FiBarChart2 },
+  { to: '/seguimiento', label: 'Seguimiento', Icon: FiActivity },
 ];
 
 export default function Dashboard() {
@@ -97,6 +103,7 @@ export default function Dashboard() {
   const reminderCards = getReminderCards(tasks);
   const reminders = getReminderInsights(tasks);
   const weeklySummary = getWeeklySummary(tasks);
+  const dashboardAnalytics = useMemo(() => getDashboardAnalytics(tasks, subjects), [subjects, tasks]);
   const welcomeName = session?.nombre ?? 'Estudiante';
 
   const prioritySummary = ['alta', 'media', 'baja'].map((priority) => ({
@@ -106,64 +113,54 @@ export default function Dashboard() {
 
   return (
     <MainLayout
-      title="Dashboard"
-      subtitle="Tu panel operativo de tareas personales, actividades asignadas, recordatorios y agenda inmediata."
+      title="Inicio"
+      subtitle="Organiza tus actividades y mantén al día tus entregas."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-40 w-40 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-10 h-28 w-28 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">Bienvenida academica</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900 lg:text-[2.35rem]">
-              {welcomeName}, tienes {pendingTasks.length} tarea(s) pendiente(s) para organizar.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Revisa entregas propias y asignadas por docentes, con recordatorios internos para decidir que atender primero.
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              {quickLinks.map(({ to, label, Icon, primary }) => (
-                <Link key={to} to={to} className={`${primary ? 'primary-btn' : 'secondary-btn'} inline-flex items-center gap-2`}>
-                  <Icon className="text-base" />
-                  {label}
-                </Link>
-              ))}
+      <PageHero
+        eyebrow="Bienvenida académica"
+        title={`${welcomeName}, tienes ${pendingTasks.length} pendientes por atender.`}
+        description="Revisa próximas entregas, prioridades y avances desde un solo lugar."
+        actions={quickLinks.map(({ to, label, Icon, primary }) => (
+          <Link key={to} to={to} className={primary ? 'primary-btn' : 'secondary-btn'}>
+            <Icon className="text-base" />
+            {label}
+          </Link>
+        ))}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            { label: 'Personales', value: pendingPersonal.length, helper: 'Pendientes propias' },
+            { label: 'Asignadas', value: pendingAssigned.length, helper: 'Asignadas por docentes' },
+            { label: 'Cumplimiento', value: `${dashboardAnalytics.overallMetrics.completionRate}%`, helper: `${completedTasks.length} completadas` },
+            { label: 'Puntualidad', value: `${dashboardAnalytics.overallMetrics.punctualityRate}%`, helper: `${nextDeliveries.length} próximas` },
+          ].map((metric, index) => (
+            <div key={metric.label} className={`hero-metric ${index === 0 ? 'hero-metric--featured' : ''}`}>
+              <p className={`text-xs font-black uppercase tracking-[0.18em] ${index === 0 ? 'text-white/50' : 'text-slate-400'}`}>
+                {metric.label}
+              </p>
+              <p className={`mt-2.5 text-3xl font-black tracking-tight ${index === 0 ? 'text-white' : 'text-slate-900'}`}>{metric.value}</p>
+              <p className={`mt-1.5 text-sm ${index === 0 ? 'text-white/70' : 'text-slate-600'}`}>{metric.helper}</p>
             </div>
-          </div>
-
-          <div className="rounded-[28px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 p-5 text-white shadow-[0_20px_48px_rgba(37,99,235,0.24)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-white/[0.45]">Resumen rapido</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Personales</p>
-                <p className="mt-2 text-3xl font-black">{pendingPersonal.length}</p>
-                <p className="mt-1 text-xs text-white/60">Pendientes propias</p>
-              </div>
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Asignadas</p>
-                <p className="mt-2 text-3xl font-black">{pendingAssigned.length}</p>
-                <p className="mt-1 text-xs text-white/60">Pendientes docentes</p>
-              </div>
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Completadas</p>
-                <p className="mt-2 text-3xl font-black">{completedTasks.length}</p>
-              </div>
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Proximas 7 dias</p>
-                <p className="mt-2 text-3xl font-black">{nextDeliveries.length}</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      </section>
+
+        {dashboardAnalytics.mainAlert ? (
+          <Link
+            to={dashboardAnalytics.mainAlert.to ?? '/seguimiento'}
+            className="hero-metric mt-3 block border-blue-100 bg-blue-50/80 transition hover:-translate-y-0.5"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-500">Alerta principal</p>
+            <p className="mt-2 text-sm font-black text-slate-900">{dashboardAnalytics.mainAlert.title}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{dashboardAnalytics.mainAlert.description}</p>
+          </Link>
+        ) : null}
+      </PageHero>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Tareas pendientes"
           value={pendingTasks.length}
-          helper="Personales y asignadas que aun requieren accion."
+          helper="Personales y asignadas por resolver."
           tone="blue"
           Icon={FiClock}
         />
@@ -182,9 +179,9 @@ export default function Dashboard() {
           Icon={FiBookOpen}
         />
         <StatCard
-          title="Entregas proximas"
+          title="Entregas próximas"
           value={nextDeliveries.length}
-          helper="Pendientes con fecha dentro de 7 dias."
+          helper="Pendientes de los próximos 7 días."
           tone="rose"
           Icon={FiCalendar}
         />
@@ -192,15 +189,15 @@ export default function Dashboard() {
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <SectionCard
-          eyebrow="Hoy y proximas"
-          title="Proximas entregas"
-          description="Lista mezclada de tareas personales y asignadas, ordenada por fecha limite."
+          eyebrow="Hoy y próximas"
+          title="Próximas entregas"
+          description="Pendientes ordenados por fecha de entrega."
           Icon={FiCalendar}
         >
           {upcomingTasks.length === 0 ? (
             <EmptyState
               title="No tienes entregas pendientes por ahora"
-              description="Cuando registres o recibas nuevas tareas apareceran aqui con prioridad por fecha."
+              description="Crea una nueva actividad para comenzar."
               action={
                 <Link to="/tareas" className="primary-btn">
                   Crear tarea
@@ -216,7 +213,7 @@ export default function Dashboard() {
                 return (
                   <article
                     key={task.id}
-                    className="rounded-[24px] border border-white/70 bg-white/[0.76] p-5 shadow-[0_16px_32px_rgba(15,23,42,0.05)]"
+                    className="content-card interactive-card p-5"
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0 flex-1">
@@ -234,17 +231,17 @@ export default function Dashboard() {
 
                         <h3 className="mt-4 text-xl font-bold tracking-tight text-slate-900">{task.titulo}</h3>
                         <p className="mt-2 text-sm font-medium text-slate-500">{getSubjectName(subjectMap, task)}</p>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripcion todavia.'}</p>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripción.'}</p>
                         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
                           <span>Entrega: {formatShortDate(task.fechaEntrega)}</span>
                           {task.tipo === 'asignada' ? <span>Docente: {task.docenteNombre || 'Sin docente'}</span> : null}
                           <Link to={getTaskPath(task)} className="text-blue-700 hover:text-blue-900">
-                            Abrir modulo
+                            Abrir
                           </Link>
                         </div>
                       </div>
 
-                      <div className="rounded-[22px] bg-slate-950 px-4 py-3 text-center text-white shadow-[0_18px_36px_rgba(15,23,42,0.14)]">
+                      <div className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-white shadow-[0_18px_36px_rgba(15,23,42,0.14)]">
                         <p className="text-3xl font-black leading-none">{dateParts.day}</p>
                         <p className="mt-2 text-xs uppercase tracking-[0.28em] text-white/[0.52]">{dateParts.month}</p>
                       </div>
@@ -260,14 +257,14 @@ export default function Dashboard() {
           <SectionCard
             eyebrow="Recordatorios"
             title="Alertas internas"
-            description="Senales operativas dentro del sistema, sin notificaciones externas."
+            description="Señales útiles para priorizar tu semana."
             Icon={FiBell}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {reminderCards.map((item) => (
                 <div
                   key={item.key}
-                  className="rounded-[22px] border border-white/70 bg-white/[0.76] px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]"
+                  className="content-card interactive-card px-4 py-4"
                 >
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{item.label}</p>
                   <p className="mt-2 text-3xl font-black text-slate-900">{item.value}</p>
@@ -278,7 +275,7 @@ export default function Dashboard() {
 
             {reminders.highPriorityUpcoming.length > 0 ? (
               <div className="mt-4 rounded-[22px] border border-blue-100 bg-blue-50/70 px-4 py-4">
-                <p className="text-sm font-bold text-blue-800">Alta prioridad proxima</p>
+                <p className="text-sm font-bold text-blue-800">Alta prioridad próxima</p>
                 <p className="mt-2 text-sm leading-6 text-blue-700">
                   {reminders.highPriorityUpcoming[0].titulo} vence {formatShortDate(reminders.highPriorityUpcoming[0].fechaEntrega)}.
                 </p>
@@ -289,7 +286,7 @@ export default function Dashboard() {
           <SectionCard
             eyebrow="Atrasadas"
             title="Tareas vencidas"
-            description="Lo que conviene resolver primero para recuperar ritmo academico."
+            description="Pendientes que conviene resolver primero."
             Icon={FiAlertCircle}
           >
             {overdueTasks.length === 0 ? (
@@ -322,19 +319,19 @@ export default function Dashboard() {
         <SectionCard
           eyebrow="Resumen"
           title="Tareas personales vs asignadas"
-          description="Separacion operativa para saber que puedes editar y que viene desde docentes."
+          description="Distingue lo que creaste de lo asignado por docentes."
           Icon={FiClipboard}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[24px] border border-white/70 bg-white/[0.78] p-5">
+            <div className="content-card p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Personales</p>
               <p className="mt-3 text-4xl font-black text-slate-900">{personalTasks.length}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{pendingPersonal.length} pendientes con CRUD completo.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{pendingPersonal.length} pendientes propias.</p>
             </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/[0.78] p-5">
+            <div className="content-card p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Asignadas</p>
               <p className="mt-3 text-4xl font-black text-slate-900">{assignedTasks.length}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{pendingAssigned.length} pendientes con estado y nota personal.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{pendingAssigned.length} pendientes asignadas.</p>
             </div>
           </div>
         </SectionCard>
@@ -342,12 +339,12 @@ export default function Dashboard() {
         <SectionCard
           eyebrow="Semana"
           title="Mini resumen semanal"
-          description="Carga pendiente para los siguientes siete dias."
+          description="Carga pendiente para los próximos siete días."
           Icon={FiClock}
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
             {weeklySummary.map((day) => (
-              <div key={day.key} className="rounded-[20px] border border-white/70 bg-white/[0.78] p-4">
+              <div key={day.key} className="content-card p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{day.label}</p>
                 <p className="mt-3 text-3xl font-black text-slate-900">{day.total}</p>
                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -362,8 +359,8 @@ export default function Dashboard() {
       <section className="mt-6">
         <SectionCard
           eyebrow="Prioridades"
-          title="Distribucion de pendientes"
-          description="Lectura rapida de prioridad para decidir el siguiente bloque de trabajo."
+          title="Distribución de pendientes"
+          description="Prioridades para decidir tu siguiente bloque de estudio."
           Icon={FiClock}
         >
           <div className="grid gap-4 md:grid-cols-3">

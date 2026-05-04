@@ -6,6 +6,10 @@ const defaultRouteMap = {
   dashboard: '/dashboard',
   materias: '/materias',
   tareas: '/tareas',
+  agenda: '/agenda',
+  'tareas-asignadas': '/tareas-asignadas',
+  reportes: '/reportes',
+  seguimiento: '/seguimiento',
   perfil: '/perfil',
   configuracion: '/configuracion',
 };
@@ -30,7 +34,7 @@ const syncSettings = async () => {
 
     return {
       ok: false,
-      message: extractApiMessage(error.payload, 'No se pudo cargar la configuracion.'),
+      message: extractApiMessage(error.payload, 'No se pudo cargar la configuración.'),
       errors: normalizeApiErrors(error.payload),
       settings: getSettings(),
     };
@@ -57,7 +61,7 @@ const updateSettings = async (changes) => {
 
     return {
       ok: false,
-      message: extractApiMessage(error.payload, 'No se pudo guardar la configuracion.'),
+      message: extractApiMessage(error.payload, 'No se pudo guardar la configuración.'),
       errors: normalizeApiErrors(error.payload),
       settings: currentSettings,
     };

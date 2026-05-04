@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logo from '../assets/studenttask-logo.jpeg';
 import { getDefaultPrivateRoute } from '../services/settingsService';
 import { isAuthenticated, loginUser, loginWithProvider } from '../services/authService';
@@ -52,21 +52,21 @@ const socialOptions = [
   {
     id: 'google',
     label: 'Google',
-    helper: 'Acceso simulado para futuras integraciones',
+    helper: 'Acceso alternativo',
     Icon: GoogleIcon,
     className: 'border-white/70 bg-white/[0.92] text-slate-800 hover:bg-white',
   },
   {
     id: 'x',
     label: 'X',
-    helper: 'Acceso alterno con proveedor social',
+    helper: 'Acceso alternativo',
     Icon: XIcon,
-    className: 'border-slate-900/85 bg-slate-950 text-white hover:bg-slate-900',
+    className: 'border-slate-900/80 bg-slate-950 text-white hover:bg-slate-900',
   },
   {
     id: 'github',
     label: 'GitHub',
-    helper: 'Listo para una conexion futura por OAuth',
+    helper: 'Acceso alternativo',
     Icon: GitHubIcon,
     className: 'border-blue-900/70 bg-blue-900 text-white hover:bg-blue-800',
   },
@@ -75,13 +75,13 @@ const socialOptions = [
 const chips = [
   { label: 'Materias', delay: '0s' },
   { label: 'Tareas', delay: '1.4s' },
-  { label: 'Avance academico', delay: '2.5s' },
+  { label: 'Avance académico', delay: '2.5s' },
 ];
 
 const benefits = [
   'Organiza tus materias desde un solo panel personal.',
-  'Registra tareas, prioridades y fechas sin perder el contexto.',
-  'Consulta entregas proximas y avance academico con datos reales.',
+  'Registra tareas, prioridades y fechas sin perder el ritmo.',
+  'Consulta próximas entregas y avances de un vistazo.',
 ];
 
 export default function Login() {
@@ -107,7 +107,7 @@ export default function Login() {
 
     const nextErrors = {
       email: form.email.trim() ? '' : 'Captura tu correo.',
-      password: form.password.trim() ? '' : 'Captura tu contrasena.',
+      password: form.password.trim() ? '' : 'Captura tu contraseña.',
     };
 
     setErrors(nextErrors);
@@ -147,24 +147,16 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen overflow-hidden px-3 py-3 lg:px-6 lg:py-5">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="float-slow absolute -left-12 top-0 h-60 w-60 rounded-full bg-blue-400/20 blur-3xl" />
-        <div className="float-delayed absolute right-[10%] top-[8%] h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />
-        <div className="float-slow absolute bottom-[-6rem] left-[24%] h-72 w-72 rounded-full bg-indigo-300/18 blur-3xl" />
-      </div>
+      <div className="auth-backdrop" />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-6xl overflow-hidden rounded-[32px] border border-white/60 bg-white/[0.35] shadow-[0_28px_120px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
         <section className="blue-hero relative hidden w-[52%] overflow-hidden px-8 py-7 text-white lg:flex lg:flex-col lg:justify-between xl:px-9 xl:py-8">
-          <div className="absolute -right-16 top-10 h-44 w-44 rounded-full border border-white/15 spin-slow" />
-          <div className="absolute bottom-10 left-[-3rem] h-40 w-40 rounded-full border border-white/10" />
-          <div className="absolute right-8 top-[34%] h-24 w-24 rounded-full bg-cyan-300/20 blur-3xl" />
-
           <div className="relative z-10 flex flex-col items-center text-center">
             <div className="flex flex-wrap justify-center gap-2.5">
               {chips.map((chip) => (
                 <span
                   key={chip.label}
-                  className="soft-chip chip-drift border border-white/15 bg-white/[0.12] text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)]"
+                  className="soft-chip chip-drift border border-white/[0.15] bg-white/[0.12] text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)]"
                   style={{ animationDelay: chip.delay }}
                 >
                   {chip.label}
@@ -177,7 +169,7 @@ export default function Login() {
                 <img src={logo} alt="StudentTask logo" className="block h-auto max-h-[12.75rem] w-full object-contain" />
               </div>
               <p className="mt-3 max-w-[15.5rem] text-[1.02rem] font-semibold leading-6 text-slate-900">
-                Tu panel para organizar el periodo academico
+                Tu panel para organizar el periodo académico
               </p>
             </div>
 
@@ -185,13 +177,13 @@ export default function Login() {
               Todo tu semestre, claro y bajo control.
             </h1>
             <p className="mt-4 max-w-[32rem] text-base leading-7 text-white/[0.8] xl:text-lg">
-              Materias, tareas y progreso academico en una experiencia rapida, visual y comoda.
+              Materias, tareas y progreso académico en una experiencia rápida, visual y cómoda.
             </p>
           </div>
 
           <div className="relative z-10 rounded-[28px] border border-white/[0.12] bg-white/[0.1] p-5 backdrop-blur-sm">
             <p className="text-xs uppercase tracking-[0.3em] text-white/[0.45]">Panel central</p>
-            <h2 className="mt-2 text-xl font-bold xl:text-2xl">Sigue tu ritmo academico sin perder contexto.</h2>
+            <h2 className="mt-2 text-xl font-bold xl:text-2xl">Sigue tu ritmo académico sin perder contexto.</h2>
 
             <div className="mt-4 space-y-2.5">
               {benefits.map((item, index) => (
@@ -209,44 +201,15 @@ export default function Login() {
 
         <section className="flex flex-1 items-center justify-center px-6 py-8 sm:px-8 lg:px-8">
           <div className="w-full max-w-[420px]">
-            <span className="soft-chip soft-chip--cool chip-drift">Inicio de sesion</span>
+            <span className="soft-chip soft-chip--cool chip-drift">Inicio de sesión</span>
             <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-900">Bienvenido de nuevo</h2>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Ingresa con tus credenciales demo o usa un acceso social simulado para volver a tu panel del estudiante.
+              Inicia sesión para continuar con tu seguimiento académico.
             </p>
 
-            <div className="mt-6 flex flex-col gap-2.5">
-              {socialOptions.map(({ id, label, helper, Icon, className }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => handleSocialLogin(id)}
-                  disabled={isBusy}
-                  className={`group flex w-full items-center gap-4 rounded-[24px] border px-5 py-3.5 text-left shadow-[0_18px_34px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_24px_48px_rgba(37,99,235,0.18)] disabled:cursor-not-allowed disabled:opacity-70 ${className}`}
-                >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/90 text-slate-900 shadow-sm transition duration-300 group-hover:scale-110">
-                    <Icon />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-semibold">Entrar con {label}</p>
-                    <p className="mt-1 text-sm opacity-80">{submitting === id ? 'Validando acceso...' : helper}</p>
-                  </div>
-                  <span className="ml-auto text-lg opacity-40 transition duration-300 group-hover:translate-x-1 group-hover:opacity-100">
-                    {'->'}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="my-6 flex items-center gap-4 text-sm text-slate-400">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span>o continua con correo</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-600">Correo electronico</label>
+                <label className="text-sm font-medium text-slate-600">Correo electrónico</label>
                 <input
                   name="email"
                   type="email"
@@ -259,13 +222,13 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600">Contrasena</label>
+                <label className="text-sm font-medium text-slate-600">Contraseña</label>
                 <input
                   name="password"
                   type="password"
                   value={form.password}
                   onChange={handleChange}
-                  placeholder="12345678"
+                  placeholder="Tu contraseña"
                   className={`field-control ${errors.password ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
                 />
                 {errors.password ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.password}</p> : null}
@@ -278,12 +241,41 @@ export default function Login() {
               ) : null}
 
               <button type="submit" disabled={isBusy} className="primary-btn w-full py-3.5 text-lg disabled:opacity-70">
-                {submitting === 'credentials' ? 'Validando...' : 'Iniciar sesion'}
+                {submitting === 'credentials' ? 'Validando...' : 'Iniciar sesión'}
               </button>
             </form>
 
+            <div className="mt-5 rounded-[22px] border border-white/70 bg-white/70 px-4 py-4 text-center text-sm text-slate-600">
+              ¿Aún no tienes cuenta?{' '}
+              <Link to="/registro" className="font-bold text-blue-700 hover:text-blue-900">
+                Crear cuenta
+              </Link>
+            </div>
+
+            <div className="my-6 flex items-center gap-4 text-sm text-slate-400">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span>otros accesos</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              {socialOptions.map(({ id, label, helper, Icon, className }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleSocialLogin(id)}
+                  disabled={isBusy}
+                  className={`group flex items-center justify-center gap-2 rounded-[18px] border px-3 py-3 text-sm font-semibold shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 ${className}`}
+                  title={helper}
+                >
+                  <Icon />
+                  <span>{submitting === id ? 'Validando...' : label}</span>
+                </button>
+              ))}
+            </div>
+
             <p className="mt-6 text-center text-xs leading-6 text-slate-500">
-              App de Control de Tareas para Estudiantes | Experiencia enfocada en el rol estudiante.
+              StudentTask · Seguimiento académico para estudiantes.
             </p>
           </div>
         </section>

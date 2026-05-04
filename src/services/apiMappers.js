@@ -63,6 +63,20 @@ const normalizeTaskState = (value) => {
 
 const encodeTaskState = (value) => (normalizeTaskState(value) === 'completada' ? 'Completada' : 'Pendiente');
 
+const normalizeTaskType = (value) => {
+  const normalized = normalizeText(value).toLowerCase();
+  return normalized === 'asignada' || normalized === 'assigned' ? 'asignada' : 'personal';
+};
+
+const normalizeTaskOrigin = (value, taskType = 'personal') => {
+  const normalized = normalizeText(value).toLowerCase();
+
+  if (normalized === 'docente' || normalized === 'teacher') return 'docente';
+  if (normalized === 'estudiante' || normalized === 'student') return 'estudiante';
+
+  return taskType === 'asignada' ? 'docente' : 'estudiante';
+};
+
 const normalizeTheme = (value, fallback = DEMO_SETTINGS.tema) => {
   const normalized = normalizeText(value, fallback).toLowerCase();
   return normalized === 'oscuro' || normalized === 'dark' ? 'oscuro' : 'claro';
@@ -159,16 +173,29 @@ const normalizeSubjectsPayload = (payload) => {
 const normalizeTaskPayload = (payload, index = 0) => {
   const data = unwrapApiData(payload) ?? {};
   const createdAt = data.createdAt ?? data.created_at ?? new Date().toISOString();
+  const taskType = normalizeTaskType(data.tipo ?? data.type);
+  const state = normalizeTaskState(data.estado ?? data.state);
+  const completedDate = normalizeText(data.fechaCompletada ?? data.fecha_completada ?? data.completedAt ?? data.completed_at);
 
   return {
     id: Number(pickFirstDefined(data.id, data.id_tarea, index + 1)) || index + 1,
     titulo: normalizeText(data.titulo),
     descripcion: normalizeText(data.descripcion),
     materiaId: Number(pickFirstDefined(data.materiaId, data.id_materia, 0)) || 0,
+    fechaPublicacion: normalizeText(data.fechaPublicacion ?? data.fecha_publicacion ?? data.publishedAt ?? data.published_at) || createdAt.split('T')[0],
     fechaEntrega: normalizeText(data.fechaEntrega ?? data.fecha_entrega),
     prioridad: normalizeTaskPriority(data.prioridad),
-    estado: normalizeTaskState(data.estado),
+    estado: state,
+    tipo: taskType,
+    origen: normalizeTaskOrigin(data.origen ?? data.origin, taskType),
+    docenteNombre: normalizeText(data.docenteNombre ?? data.docente_nombre ?? data.teacherName ?? data.teacher_name),
+    grupoNombre: normalizeText(data.grupoNombre ?? data.grupo_nombre ?? data.groupName ?? data.group_name),
+    instrucciones: normalizeText(data.instrucciones ?? data.instructions),
+    enlaceApoyo: normalizeText(data.enlaceApoyo ?? data.enlace_apoyo ?? data.supportLink ?? data.support_link),
+    tiempoEstimadoHoras: Number(data.tiempoEstimadoHoras ?? data.tiempo_estimado_horas ?? data.estimatedHours ?? data.estimated_hours) || 0,
     recordatorio: toBoolean(data.recordatorio),
+    notaPersonal: normalizeText(data.notaPersonal ?? data.nota_personal ?? data.personalNote ?? data.personal_note),
+    fechaCompletada: state === 'completada' ? completedDate || (data.updatedAt ?? data.updated_at ?? createdAt).split('T')[0] : null,
     createdAt,
     updatedAt: data.updatedAt ?? data.updated_at ?? createdAt,
   };
@@ -193,10 +220,20 @@ const serializeTaskPayload = (task) => ({
   titulo: normalizeText(task.titulo),
   descripcion: normalizeText(task.descripcion),
   id_materia: Number(task.materiaId),
+  fecha_publicacion: normalizeText(task.fechaPublicacion),
   fecha_entrega: normalizeText(task.fechaEntrega),
   prioridad: encodeTaskPriority(task.prioridad),
   estado: encodeTaskState(task.estado),
+  tipo: normalizeTaskType(task.tipo),
+  origen: normalizeTaskOrigin(task.origen, normalizeTaskType(task.tipo)),
+  docente_nombre: normalizeText(task.docenteNombre),
+  grupo_nombre: normalizeText(task.grupoNombre),
+  instrucciones: normalizeText(task.instrucciones),
+  enlace_apoyo: normalizeText(task.enlaceApoyo),
+  tiempo_estimado_horas: Number(task.tiempoEstimadoHoras) || 0,
   recordatorio: Boolean(task.recordatorio),
+  nota_personal: normalizeText(task.notaPersonal),
+  fecha_completada: normalizeText(task.fechaCompletada),
 });
 
 const serializeSettingsPayload = (settings) => ({
@@ -246,8 +283,10 @@ export {
   normalizeSubjectPayload,
   normalizeSubjectsPayload,
   normalizeTaskPayload,
+  normalizeTaskOrigin,
   normalizeTaskPriority,
   normalizeTaskState,
+  normalizeTaskType,
   normalizeTasksPayload,
   normalizeTheme,
   serializeSettingsPayload,

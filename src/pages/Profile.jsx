@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiBookOpen, FiMail, FiSave, FiUser } from 'react-icons/fi';
 import MainLayout from '../layout/MainLayout';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import { getProfile, updateProfile } from '../services/profileService';
 
@@ -31,7 +32,7 @@ export default function Profile() {
     const nextErrors = {
       nombre: profile.nombre.trim() ? '' : 'El nombre es obligatorio.',
       apellidos: profile.apellidos.trim() ? '' : 'Los apellidos son obligatorios.',
-      matricula: profile.matricula.trim() ? '' : 'La matricula es obligatoria.',
+      matricula: profile.matricula.trim() ? '' : 'La matrícula es obligatoria.',
       carrera: profile.carrera.trim() ? '' : 'La carrera o programa es obligatorio.',
       semestre: profile.semestre.trim() ? '' : 'El semestre o nivel es obligatorio.',
       grupo: profile.grupo.trim() ? '' : 'El grupo es obligatorio.',
@@ -55,67 +56,38 @@ export default function Profile() {
   return (
     <MainLayout
       title="Perfil"
-      subtitle="Consulta y actualiza tu informacion personal sin salir del panel del estudiante."
+      subtitle="Mantén actualizados tus datos personales y académicos."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">Identidad academica</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Tu perfil siempre a la mano para que el panel se sienta realmente tuyo.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Mantiene actualizados tu nombre, matricula y datos academicos sin tocar configuraciones globales del sistema.
-            </p>
-          </div>
-
-          <div className="rounded-[28px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 p-5 text-white shadow-[0_20px_48px_rgba(37,99,235,0.24)]">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/12 text-2xl font-black tracking-[0.12em] text-white shadow-inner">
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-2xl font-black tracking-tight">{fullName}</p>
-                <p className="mt-2 text-sm text-white/75">{profile.matricula}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Carrera</p>
-                <p className="mt-2 text-sm font-semibold text-white/85">{profile.carrera}</p>
-              </div>
-              <div className="rounded-[22px] bg-white/[0.08] px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/[0.45]">Semestre</p>
-                <p className="mt-2 text-sm font-semibold text-white/85">{profile.semestre}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Identidad académica"
+        title="Tus datos listos para cada actividad académica."
+        description="Actualiza tu nombre, matrícula, carrera, semestre y grupo."
+        stats={[
+          { label: 'Estudiante', value: fullName || initials, helper: profile.matricula, tone: 'primary', Icon: FiUser },
+          { label: 'Carrera', value: profile.carrera, helper: `Grupo ${profile.grupo}`, Icon: FiBookOpen },
+          { label: 'Semestre', value: profile.semestre, helper: 'Nivel académico actual.', Icon: FiUser },
+        ]}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[0.84fr_1.16fr]">
         <SectionCard
           eyebrow="Resumen"
           title="Datos actuales"
-          description="Informacion visible para tu sesion y para el panel academico."
+          description="Información visible en tu sesión."
           Icon={FiUser}
         >
           <div className="space-y-4">
             {[
               { label: 'Nombre completo', value: fullName },
-              { label: 'Correo demo', value: profile.email },
-              { label: 'Matricula', value: profile.matricula },
+              { label: 'Correo electrónico', value: profile.email },
+              { label: 'Matrícula', value: profile.matricula },
               { label: 'Carrera', value: profile.carrera },
               { label: 'Semestre', value: profile.semestre },
               { label: 'Grupo', value: profile.grupo },
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-[22px] border border-white/70 bg-white/[0.74] px-4 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]"
+                className="content-card px-4 py-4"
               >
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{item.label}</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{item.value}</p>
@@ -125,9 +97,9 @@ export default function Profile() {
         </SectionCard>
 
         <SectionCard
-          eyebrow="Edicion"
+          eyebrow="Edición"
           title="Actualiza tu perfil"
-          description="Puedes modificar tus datos personales y academicos. El correo demo se mantiene fijo para conservar el acceso."
+          description="Modifica tus datos personales y académicos."
           Icon={FiBookOpen}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -157,7 +129,7 @@ export default function Profile() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-600">Correo demo</label>
+                <label className="text-sm font-medium text-slate-600">Correo electrónico</label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-[1.35rem] text-slate-400">
                     <FiMail className="text-base" />
@@ -169,11 +141,11 @@ export default function Profile() {
                     className="field-control pl-11 text-slate-500"
                   />
                 </div>
-                <p className="mt-2 text-sm text-slate-500">Se mantiene fijo para conservar el acceso con las credenciales demo.</p>
+                <p className="mt-2 text-sm text-slate-500">El correo se mantiene fijo para proteger tu acceso.</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600">Matricula</label>
+                <label className="text-sm font-medium text-slate-600">Matrícula</label>
                 <input
                   name="matricula"
                   value={profile.matricula}

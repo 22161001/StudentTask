@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FiCheckCircle, FiClipboard, FiExternalLink, FiFilter, FiRotateCcw, FiSave } from 'react-icons/fi';
+import FeedbackBanner from '../components/FeedbackBanner';
 import MainLayout from '../layout/MainLayout';
 import EmptyState from '../components/EmptyState';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import { getSubjects, syncSubjects } from '../services/subjectService';
 import { getTasks, syncTasks, toggleTaskStatus, updateAssignedTaskProgress } from '../services/taskService';
@@ -130,7 +132,7 @@ export default function AssignedTasks() {
 
     setFeedback({
       type: 'success',
-      message: task.estado === 'completada' ? 'La tarea asignada volvio a pendiente.' : 'La tarea asignada se marco como completada.',
+      message: task.estado === 'completada' ? 'La tarea volvió a pendiente.' : 'Tarea completada.',
     });
   };
 
@@ -146,7 +148,7 @@ export default function AssignedTasks() {
     }
 
     setTasks(result.tasks);
-    setFeedback({ type: 'success', message: 'La nota personal se guardo correctamente.' });
+    setFeedback({ type: 'success', message: 'Nota guardada.' });
   };
 
   const resetFilters = () => {
@@ -156,56 +158,27 @@ export default function AssignedTasks() {
   return (
     <MainLayout
       title="Tareas asignadas"
-      subtitle="Consulta actividades creadas por docentes y registra tu avance personal sin modificar los datos academicos de origen."
+      subtitle="Revisa actividades de tus docentes y registra tu avance."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">Actividades docentes</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Revisa lo asignado por docentes y guarda tu estado de avance.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              En esta fase no editas titulo, materia, fecha limite, instrucciones, docente ni grupo. Solo puedes marcar avance y agregar tu nota.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[24px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 px-4 py-5 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/[0.45]">Asignadas</p>
-              <p className="mt-3 text-3xl font-black">{assignedTasks.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Pendientes</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{pendingAssigned.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Sin revisar</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{unreviewedAssigned.length}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Actividades docentes"
+        title="Atiende tus actividades asignadas con claridad."
+        description="Marca avances, guarda notas personales y consulta instrucciones cuando lo necesites."
+        stats={[
+          { label: 'Asignadas', value: assignedTasks.length, helper: 'Actividades recibidas de docentes.', tone: 'primary', Icon: FiClipboard },
+          { label: 'Pendientes', value: pendingAssigned.length, helper: 'Todavía requieren seguimiento.', Icon: FiRotateCcw },
+          { label: 'Sin revisar', value: unreviewedAssigned.length, helper: 'Sin nota o avance personal.', tone: unreviewedAssigned.length ? 'warning' : 'neutral', Icon: FiSave },
+        ]}
+      />
 
       {feedback ? (
-        <div
-          className={`mb-6 rounded-[24px] px-5 py-4 text-sm font-medium ${
-            feedback.type === 'error'
-              ? 'border border-rose-100 bg-rose-50 text-rose-700'
-              : 'border border-blue-100 bg-blue-50 text-blue-700'
-          }`}
-        >
-          {feedback.message}
-        </div>
+        <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 
       <SectionCard
         eyebrow={`${filteredTasks.length} resultado(s)`}
         title="Filtros de tareas asignadas"
-        description="Afina la vista por materia, docente, grupo, estado, prioridad o busqueda general."
+        description="Afina la vista por materia, docente, grupo, estado o prioridad."
         Icon={FiFilter}
       >
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -216,7 +189,7 @@ export default function AssignedTasks() {
               value={filters.search}
               onChange={handleFilterChange}
               className="field-control"
-              placeholder="Titulo, instrucciones, docente o grupo"
+              placeholder="Título, instrucciones, docente o grupo"
             />
           </div>
 
@@ -288,7 +261,7 @@ export default function AssignedTasks() {
         {filteredTasks.length === 0 ? (
           <EmptyState
             title="No hay tareas asignadas para mostrar"
-            description="Ajusta los filtros o espera nuevas actividades sembradas desde docentes demo."
+            description="Ajusta los filtros o revisa más tarde."
             Icon={FiClipboard}
           />
         ) : (
@@ -300,8 +273,8 @@ export default function AssignedTasks() {
               return (
                 <article
                   key={task.id}
-                  className={`surface-panel p-5 ${
-                    deadlineMeta.key === 'vencida' ? 'border-rose-100 ring-1 ring-rose-100' : ''
+                  className={`surface-panel interactive-card p-5 ${
+                    deadlineMeta.key === 'vencida' ? '!border-rose-100 ring-1 ring-rose-100' : ''
                   }`}
                 >
                   <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
@@ -331,7 +304,7 @@ export default function AssignedTasks() {
                           <span className="font-semibold text-slate-700">Publicada:</span> {formatShortDate(task.fechaPublicacion)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Limite:</span> {formatShortDate(task.fechaEntrega)}
+                          <span className="font-semibold text-slate-700">Límite:</span> {formatShortDate(task.fechaEntrega)}
                         </p>
                         <p>
                           <span className="font-semibold text-slate-700">Estado:</span> {formatStateLabel(task.estado)}
@@ -341,7 +314,7 @@ export default function AssignedTasks() {
                         </p>
                       </div>
 
-                      <div className="mt-5 rounded-[22px] border border-white/70 bg-white/[0.72] p-4">
+                      <div className="content-card mt-5 p-4">
                         <p className="text-sm font-bold text-slate-800">Instrucciones del docente</p>
                         <p className="mt-2 text-sm leading-7 text-slate-600">{task.instrucciones || 'Sin instrucciones detalladas.'}</p>
                         {task.enlaceApoyo ? (
@@ -358,21 +331,21 @@ export default function AssignedTasks() {
                       </div>
                     </div>
 
-                    <div className="rounded-[24px] border border-white/70 bg-white/[0.76] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
-                      <label className="text-sm font-medium text-slate-600">Nota personal del alumno</label>
+                    <div className="content-card p-4">
+                      <label className="text-sm font-medium text-slate-600">Nota personal</label>
                       <textarea
                         value={noteValue}
                         onChange={(event) => handleNoteChange(task.id, event.target.value)}
                         rows="7"
                         className="field-control min-h-[150px] resize-y"
-                        placeholder="Agrega dudas, avance, pendientes o evidencia que quieras recordar."
+                        placeholder="Agrega dudas, avances o pendientes que quieras recordar."
                       />
 
                       <div className="mt-4 flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => handleSaveNote(task)}
-                          className="secondary-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                          className="secondary-btn text-sm"
                         >
                           <FiSave className="text-base" />
                           Guardar nota
@@ -380,7 +353,7 @@ export default function AssignedTasks() {
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(task)}
-                          className="primary-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                          className="primary-btn text-sm"
                         >
                           {task.estado === 'completada' ? <FiRotateCcw className="text-base" /> : <FiCheckCircle className="text-base" />}
                           {task.estado === 'completada' ? 'Marcar pendiente' : 'Marcar completada'}

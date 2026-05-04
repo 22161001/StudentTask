@@ -1,4 +1,5 @@
 import { DEMO_PROFILE, STORAGE_KEYS, readStorage, writeStorage } from './storageService';
+import { updateStoredUserProfile } from './userService';
 
 const getProfile = () => readStorage(STORAGE_KEYS.profile, DEMO_PROFILE);
 
@@ -18,6 +19,7 @@ const updateProfile = (changes) => {
   };
 
   writeStorage(STORAGE_KEYS.profile, nextProfile);
+  updateStoredUserProfile(nextProfile);
 
   const currentSession = readStorage(STORAGE_KEYS.session, null);
   if (currentSession) {

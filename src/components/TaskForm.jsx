@@ -13,26 +13,26 @@ export default function TaskForm({
   return (
     <form id="task-form" onSubmit={onSubmit} className="space-y-4">
       <div>
-        <label className="text-sm font-medium text-slate-600">Titulo</label>
+        <label className="text-sm font-medium text-slate-600">Título</label>
         <input
           name="titulo"
           value={form.titulo}
           onChange={onChange}
           className={`field-control ${errors.titulo ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
-          placeholder="Ej. Entregar practica de laboratorio"
+          placeholder="Ej. Entregar práctica de laboratorio"
         />
         {errors.titulo ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.titulo}</p> : null}
       </div>
 
       <div>
-        <label className="text-sm font-medium text-slate-600">Descripcion</label>
+        <label className="text-sm font-medium text-slate-600">Descripción</label>
         <textarea
           name="descripcion"
           value={form.descripcion}
           onChange={onChange}
           rows="4"
           className="field-control min-h-[120px] resize-y"
-          placeholder="Nota breve sobre lo que debes entregar, revisar o preparar."
+          placeholder="Nota breve sobre lo que debes entregar o preparar."
         />
       </div>
 
@@ -57,6 +57,20 @@ export default function TaskForm({
         </div>
 
         <div>
+          <label className="text-sm font-medium text-slate-600">Fecha de publicación</label>
+          <input
+            name="fechaPublicacion"
+            type="date"
+            value={form.fechaPublicacion}
+            onChange={onChange}
+            className={`field-control ${errors.fechaPublicacion ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
+          />
+          {errors.fechaPublicacion ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.fechaPublicacion}</p> : null}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
           <label className="text-sm font-medium text-slate-600">Fecha de entrega</label>
           <input
             name="fechaEntrega"
@@ -66,6 +80,21 @@ export default function TaskForm({
             className={`field-control ${errors.fechaEntrega ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
           />
           {errors.fechaEntrega ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.fechaEntrega}</p> : null}
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-600">Tiempo estimado (horas)</label>
+          <input
+            name="tiempoEstimadoHoras"
+            type="number"
+            min="0"
+            step="0.5"
+            value={form.tiempoEstimadoHoras}
+            onChange={onChange}
+            className={`field-control ${errors.tiempoEstimadoHoras ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
+            placeholder="Ej. 2"
+          />
+          {errors.tiempoEstimadoHoras ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.tiempoEstimadoHoras}</p> : null}
         </div>
       </div>
 
@@ -105,7 +134,19 @@ export default function TaskForm({
         </div>
       </div>
 
-      <label className="flex items-center gap-4 rounded-[24px] border border-white/70 bg-white/[0.74] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
+      <div>
+        <label className="text-sm font-medium text-slate-600">Nota personal</label>
+        <textarea
+          name="notaPersonal"
+          value={form.notaPersonal}
+          onChange={onChange}
+          rows="3"
+          className="field-control min-h-[92px] resize-y"
+          placeholder="Apunta dudas, recursos o pasos que quieres recordar."
+        />
+      </div>
+
+      <label className="content-card flex items-center gap-4 p-4">
         <input
           type="checkbox"
           name="recordatorio"
@@ -115,7 +156,7 @@ export default function TaskForm({
         />
         <div>
           <p className="font-semibold text-slate-700">Activar recordatorio</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">Deja marcada esta opcion si quieres identificar la tarea como prioritaria para seguimiento.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">Destaca esta tarea en tus recordatorios.</p>
         </div>
       </label>
 

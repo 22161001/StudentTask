@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiFilter, FiList, FiPlusCircle } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheckCircle, FiClock, FiFilter, FiList, FiPlusCircle } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import FeedbackBanner from '../components/FeedbackBanner';
 import MainLayout from '../layout/MainLayout';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import TaskFilters from '../components/TaskFilters';
 import TaskForm from '../components/TaskForm';
@@ -148,7 +150,7 @@ export default function Tasks() {
     setTasks(result.tasks);
     setFeedback({
       type: 'success',
-      message: editingId ? 'La tarea se actualizo correctamente.' : 'La tarea se creo correctamente.',
+      message: editingId ? 'Tarea actualizada.' : 'Tarea creada.',
     });
     resetForm();
   };
@@ -172,7 +174,7 @@ export default function Tasks() {
   };
 
   const handleDelete = async (task) => {
-    if (!window.confirm(`Se eliminara la tarea "${task.titulo}". Deseas continuar?`)) {
+    if (!window.confirm(`Se eliminará la tarea "${task.titulo}". ¿Deseas continuar?`)) {
       return;
     }
 
@@ -183,7 +185,7 @@ export default function Tasks() {
     }
 
     setTasks(result.tasks);
-    setFeedback({ type: 'success', message: 'La tarea se elimino correctamente.' });
+    setFeedback({ type: 'success', message: 'Tarea eliminada.' });
     if (editingId === task.id) {
       resetForm();
     }
@@ -199,64 +201,35 @@ export default function Tasks() {
     setTasks(result.tasks);
     setFeedback({
       type: 'success',
-      message: task.estado === 'completada' ? 'La tarea volvio a pendiente.' : 'La tarea se marco como completada.',
+      message: task.estado === 'completada' ? 'La tarea volvió a pendiente.' : 'Tarea completada.',
     });
   };
 
   return (
     <MainLayout
       title="Tareas"
-      subtitle="CRUD completo de tus tareas con filtros, busqueda, orden por fecha y seguimiento academico real."
+      subtitle="Organiza tus pendientes por materia, fecha y prioridad."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">CRUD de tareas</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Controla tus tareas personales y revisa las asignadas por docente en una sola lista operativa.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Puedes crear, editar y eliminar tareas personales. Las asignadas se muestran con sus datos protegidos y solo permiten avance de estado.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[24px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 px-4 py-5 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/[0.45]">Pendientes</p>
-              <p className="mt-3 text-3xl font-black">{pendingTasks.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Completadas</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{completedTasks.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vencidas</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{overdueTasks.length}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Pendientes"
+        title="Reúne tus tareas personales y las asignadas por docentes."
+        description="Da seguimiento a fechas, prioridades, notas y avance desde una sola vista."
+        stats={[
+          { label: 'Pendientes', value: pendingTasks.length, helper: `${nextDeliveries.length} vencen esta semana.`, tone: 'primary', Icon: FiClock },
+          { label: 'Completadas', value: completedTasks.length, helper: 'Actividades marcadas como resueltas.', tone: 'success', Icon: FiCheckCircle },
+          { label: 'Vencidas', value: overdueTasks.length, helper: 'Requieren atención prioritaria.', tone: overdueTasks.length ? 'danger' : 'neutral', Icon: FiAlertTriangle },
+        ]}
+      />
 
       {feedback ? (
-        <div
-          className={`mb-6 rounded-[24px] px-5 py-4 text-sm font-medium ${
-            feedback.type === 'error'
-              ? 'border border-rose-100 bg-rose-50 text-rose-700'
-              : 'border border-blue-100 bg-blue-50 text-blue-700'
-          }`}
-        >
-          {feedback.message}
-        </div>
+        <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <SectionCard
-          eyebrow={editingId ? 'Edicion activa' : 'Agregar tarea'}
+          eyebrow={editingId ? 'Edición activa' : 'Agregar tarea'}
           title={editingId ? 'Actualiza una tarea personal' : 'Registra una nueva tarea personal'}
-          description="Incluye materia, fechas, prioridad, tiempo estimado, nota y recordatorio."
+          description="Agrega materia, fecha, prioridad y una nota personal."
           Icon={FiPlusCircle}
         >
           <TaskForm
@@ -274,8 +247,8 @@ export default function Tasks() {
         <div className="space-y-6">
           <SectionCard
             eyebrow={`${filteredTasks.length} tarea(s)`}
-            title="Listado filtrable de tareas"
-            description="Busca y filtra por estado, prioridad, materia, tipo, origen o fecha de entrega."
+            title="Filtrar tareas"
+            description="Encuentra pendientes por estado, prioridad, materia o fecha."
             Icon={FiFilter}
           >
             <TaskFilters
@@ -288,9 +261,9 @@ export default function Tasks() {
           </SectionCard>
 
           <SectionCard
-            eyebrow={`${nextDeliveries.length} proximas`}
+            eyebrow={`${nextDeliveries.length} próximas`}
             title="Tareas personales y asignadas"
-            description={`${personalTasks.length} personales y ${assignedTasks.length} asignadas, ordenadas con acciones segun el origen.`}
+            description={`${personalTasks.length} personales y ${assignedTasks.length} asignadas.`}
             Icon={FiList}
           >
             <TaskList

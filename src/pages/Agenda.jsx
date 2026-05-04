@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiAlertCircle, FiCalendar, FiChevronLeft, FiChevronRight, FiClock, FiFilter } from 'react-icons/fi';
 import MainLayout from '../layout/MainLayout';
 import EmptyState from '../components/EmptyState';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import { getSubjects, syncSubjects } from '../services/subjectService';
 import { getTasks, syncTasks } from '../services/taskService';
@@ -38,7 +39,7 @@ const initialFilters = {
 };
 
 const viewModes = [
-  { value: 'dia', label: 'Dia' },
+  { value: 'dia', label: 'Día' },
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mes' },
 ];
@@ -59,8 +60,8 @@ function AgendaTaskCard({ task, subjectsById, compact = false }) {
 
   return (
     <article
-      className={`rounded-[20px] border bg-white/[0.78] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04)] ${
-        deadlineMeta.key === 'vencida' ? 'border-rose-100 ring-1 ring-rose-100' : 'border-white/70'
+      className={`content-card interactive-card p-4 ${
+        deadlineMeta.key === 'vencida' ? '!border-rose-100 ring-1 ring-rose-100' : ''
       }`}
     >
       <div className="flex flex-wrap gap-2 text-xs">
@@ -81,7 +82,7 @@ function AgendaTaskCard({ task, subjectsById, compact = false }) {
       <h3 className={`${compact ? 'mt-3 text-sm' : 'mt-4 text-lg'} font-bold leading-snug text-slate-900`}>{task.titulo}</h3>
       <p className="mt-2 text-sm font-medium text-slate-500">{getSubjectName(subjectsById, task)}</p>
       {!compact ? (
-        <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripcion.'}</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripción.'}</p>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
         <span>{formatShortDate(task.fechaEntrega)}</span>
@@ -181,44 +182,23 @@ export default function Agenda() {
   return (
     <MainLayout
       title="Agenda"
-      subtitle="Consulta tus tareas personales y asignadas por dia, semana o mes con filtros operativos."
+      subtitle="Revisa tus entregas por día, semana o mes."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">Agenda operativa</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Organiza entregas por fecha sin depender de un calendario externo.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Cambia entre dia, semana y mes para ver tareas personales y actividades asignadas en el mismo flujo.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[24px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 px-4 py-5 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/[0.45]">Periodo</p>
-              <p className="mt-3 text-2xl font-black capitalize">{getPeriodLabel(selectedDate, mode)}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">En vista</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{periodTasks.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vencidas</p>
-              <p className="mt-3 text-3xl font-black text-slate-900">{reminders.overdue.length}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Agenda académica"
+        title="Visualiza tus entregas y planea mejor tu semana."
+        description="Alterna entre vistas para encontrar lo que toca resolver."
+        stats={[
+          { label: 'Periodo', value: getPeriodLabel(selectedDate, mode), helper: `Vista activa: ${viewModes.find((viewMode) => viewMode.value === mode)?.label ?? mode}.`, tone: 'primary', Icon: FiCalendar },
+          { label: 'En vista', value: periodTasks.length, helper: 'Tareas dentro del periodo actual.', Icon: FiClock },
+          { label: 'Vencidas', value: reminders.overdue.length, helper: 'Pendientes fuera de fecha.', tone: reminders.overdue.length ? 'danger' : 'neutral', Icon: FiAlertCircle },
+        ]}
+      />
 
       <SectionCard
         eyebrow="Controles"
         title="Vista y filtros de agenda"
-        description="Muevete entre periodos y filtra la carga academica por materia, tipo, estado o prioridad."
+        description="Muévete entre periodos y filtra por materia, tipo, estado o prioridad."
         Icon={FiFilter}
       >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -228,7 +208,7 @@ export default function Agenda() {
                 key={viewMode.value}
                 type="button"
                 onClick={() => setMode(viewMode.value)}
-                className={`rounded-[18px] px-4 py-2.5 text-sm font-bold transition ${
+                className={`rounded-[13px] px-3.5 py-2 text-sm font-bold transition ${
                   mode === viewMode.value
                     ? 'bg-blue-600 text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)]'
                     : 'border border-white/70 bg-white/80 text-slate-600 hover:bg-white'
@@ -240,14 +220,14 @@ export default function Agenda() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => movePeriod(-1)} className="secondary-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
+            <button type="button" onClick={() => movePeriod(-1)} className="secondary-btn text-sm">
               <FiChevronLeft className="text-base" />
               Anterior
             </button>
-            <button type="button" onClick={() => setSelectedDate(getTodayKey())} className="secondary-btn px-4 py-2.5 text-sm">
+            <button type="button" onClick={() => setSelectedDate(getTodayKey())} className="secondary-btn text-sm">
               Hoy
             </button>
-            <button type="button" onClick={() => movePeriod(1)} className="secondary-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
+            <button type="button" onClick={() => movePeriod(1)} className="secondary-btn text-sm">
               Siguiente
               <FiChevronRight className="text-base" />
             </button>
@@ -305,22 +285,22 @@ export default function Agenda() {
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
         <SectionCard
-          eyebrow={mode}
+          eyebrow={viewModes.find((viewMode) => viewMode.value === mode)?.label ?? mode}
           title={getPeriodLabel(selectedDate, mode)}
-          description="Cada tarjeta agrupa tareas por fecha de entrega. Las vencidas se resaltan automaticamente."
+          description="Tareas agrupadas por fecha de entrega."
           Icon={FiCalendar}
         >
           {mode === 'dia' ? (
             <div>
-              <div className="mb-5 rounded-[24px] border border-white/70 bg-white/[0.78] p-5">
+              <div className="content-card mb-5 p-5">
                 <p className="text-sm font-bold uppercase tracking-[0.24em] text-slate-400">{formatWeekday(selectedDate)}</p>
                 <h3 className="mt-2 text-3xl font-black text-slate-900">{formatLongDate(selectedDate)}</h3>
               </div>
 
               {(tasksByDate.get(selectedDate) ?? []).length === 0 ? (
                 <EmptyState
-                  title="No hay tareas en este dia"
-                  description="Cambia de fecha o ajusta los filtros para revisar otra carga."
+                  title="No hay tareas en este día"
+                  description="Cambia de fecha o ajusta los filtros."
                   Icon={FiCalendar}
                 />
               ) : (
@@ -344,7 +324,7 @@ export default function Agenda() {
                     className={`min-h-[190px] rounded-[22px] border p-3 text-left transition hover:-translate-y-0.5 ${
                       day.key === selectedDate
                         ? 'border-blue-200 bg-blue-50/80 ring-2 ring-blue-100'
-                        : 'border-white/70 bg-white/[0.76]'
+                        : 'border-slate-200/70 bg-white/[0.85]'
                     } ${day.isCurrentMonth === false ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -374,7 +354,7 @@ export default function Agenda() {
                         );
                       })}
                       {dayTasks.length > (mode === 'mes' ? 3 : 4) ? (
-                        <p className="text-xs font-semibold text-slate-500">+{dayTasks.length - (mode === 'mes' ? 3 : 4)} mas</p>
+                        <p className="text-xs font-semibold text-slate-500">+{dayTasks.length - (mode === 'mes' ? 3 : 4)} más</p>
                       ) : null}
                     </div>
                   </button>
@@ -388,11 +368,11 @@ export default function Agenda() {
           <SectionCard
             eyebrow="Fecha activa"
             title={formatLongDate(selectedDate)}
-            description="Tareas del dia seleccionado en la agenda."
+            description="Tareas del día seleccionado."
             Icon={FiClock}
           >
             {(tasksByDate.get(selectedDate) ?? []).length === 0 ? (
-              <EmptyState title="Dia sin tareas" description="Selecciona otra fecha para ver entregas." Icon={FiCalendar} />
+              <EmptyState title="Día sin tareas" description="Selecciona otra fecha para ver entregas." Icon={FiCalendar} />
             ) : (
               <div className="space-y-3">
                 {(tasksByDate.get(selectedDate) ?? []).map((task) => (
@@ -404,19 +384,19 @@ export default function Agenda() {
 
           <SectionCard
             eyebrow="Recordatorios"
-            title="Senales internas"
-            description="Vencimientos inmediatos calculados con los mismos filtros."
+            title="Señales de agenda"
+            description="Vencimientos próximos según tus filtros."
             Icon={FiAlertCircle}
           >
             <div className="space-y-3">
               {[
                 { label: 'Vencen hoy', total: reminders.dueToday.length },
-                { label: 'Vencen manana', total: reminders.dueTomorrow.length },
+                { label: 'Vencen mañana', total: reminders.dueTomorrow.length },
                 { label: 'Vencidas', total: reminders.overdue.length },
-                { label: 'Alta prioridad proxima', total: reminders.highPriorityUpcoming.length },
+                { label: 'Alta prioridad próxima', total: reminders.highPriorityUpcoming.length },
                 { label: 'Asignadas sin revisar', total: reminders.assignedUnreviewed.length },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between rounded-[18px] border border-white/70 bg-white/[0.78] px-4 py-3">
+                <div key={item.label} className="content-card flex items-center justify-between px-4 py-3">
                   <span className="text-sm font-semibold text-slate-600">{item.label}</span>
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-black text-blue-700">{item.total}</span>
                 </div>
@@ -431,7 +411,7 @@ export default function Agenda() {
           <SectionCard
             eyebrow={`${periodTasks.length} tarea(s)`}
             title="Listado del periodo"
-            description="Acceso rapido hacia el modulo correcto segun el tipo de tarea."
+            description="Acceso rápido a las tareas de este periodo."
             Icon={FiCalendar}
           >
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

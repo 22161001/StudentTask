@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiBookOpen, FiLayers } from 'react-icons/fi';
+import { FiBookOpen, FiClock, FiLayers } from 'react-icons/fi';
+import FeedbackBanner from '../components/FeedbackBanner';
 import MainLayout from '../layout/MainLayout';
+import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import SubjectForm from '../components/SubjectForm';
 import SubjectList from '../components/SubjectList';
@@ -98,7 +100,7 @@ export default function Subjects() {
     setSubjects(result.subjects);
     setFeedback({
       type: 'success',
-      message: editingId ? 'La materia se actualizo correctamente.' : 'La materia se creo correctamente.',
+      message: editingId ? 'Materia actualizada.' : 'Materia creada.',
     });
     resetForm();
   };
@@ -115,7 +117,7 @@ export default function Subjects() {
   };
 
   const handleDelete = async (subject) => {
-    if (!window.confirm(`Se intentara eliminar la materia "${subject.nombre}". Deseas continuar?`)) {
+    if (!window.confirm(`Se eliminará la materia "${subject.nombre}". ¿Deseas continuar?`)) {
       return;
     }
 
@@ -126,7 +128,7 @@ export default function Subjects() {
     }
 
     setSubjects(result.subjects);
-    setFeedback({ type: 'success', message: 'La materia se elimino correctamente.' });
+    setFeedback({ type: 'success', message: 'Materia eliminada.' });
     if (editingId === subject.id) {
       resetForm();
     }
@@ -135,58 +137,38 @@ export default function Subjects() {
   return (
     <MainLayout
       title="Materias"
-      subtitle="Gestiona solo tus materias con un CRUD limpio, claro y pensado para la entrega escolar."
+      subtitle="Mantén tus asignaturas ordenadas para clasificar cada entrega."
     >
-      <section className="surface-panel relative mb-6 overflow-hidden p-6 lg:p-7">
-        <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute left-10 top-8 h-24 w-24 rounded-full bg-blue-200/45 blur-3xl" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <div>
-            <span className="soft-chip soft-chip--cool">CRUD de materias</span>
-            <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-900">
-              Ten tus materias ordenadas y listas para clasificar cada tarea del periodo.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Aqui solo administras tus propias asignaturas, con color, descripcion y conexion directa con la carga real de tareas.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[24px] bg-gradient-to-br from-slate-950 via-blue-900 to-blue-700 px-5 py-5 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/[0.45]">Materias registradas</p>
-              <p className="mt-3 text-3xl font-black">{subjects.length}</p>
-              <p className="mt-2 text-sm leading-6 text-white/[0.68]">{totalPending} tareas pendientes distribuidas por materia.</p>
-            </div>
-
-            <div className="rounded-[24px] border border-white/70 bg-white/80 px-5 py-5 shadow-[0_16px_38px_rgba(15,23,42,0.07)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Mayor carga</p>
-              <p className="mt-3 text-lg font-black tracking-tight text-slate-900">{busiestSubject?.nombre ?? 'Sin datos'}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {busiestSubject ? `${busiestSubject.pendingTasks} tareas pendientes asociadas.` : 'Aun no tienes materias registradas.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Asignaturas"
+        title="Materias claras para organizar mejor tus tareas."
+        description="Usa colores y notas breves para reconocer cada asignatura al instante."
+        stats={[
+          {
+            label: 'Materias registradas',
+            value: subjects.length,
+            helper: `${totalPending} tareas pendientes distribuidas por materia.`,
+            tone: 'primary',
+            Icon: FiBookOpen,
+          },
+          {
+            label: 'Mayor carga',
+            value: busiestSubject?.nombre ?? 'Sin datos',
+            helper: busiestSubject ? `${busiestSubject.pendingTasks} tareas pendientes asociadas.` : 'Aún no tienes materias registradas.',
+            Icon: FiClock,
+          },
+        ]}
+      />
 
       {feedback ? (
-        <div
-          className={`mb-6 rounded-[24px] px-5 py-4 text-sm font-medium ${
-            feedback.type === 'error'
-              ? 'border border-rose-100 bg-rose-50 text-rose-700'
-              : 'border border-blue-100 bg-blue-50 text-blue-700'
-          }`}
-        >
-          {feedback.message}
-        </div>
+        <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <SectionCard
-          eyebrow={editingId ? 'Edicion activa' : 'Nueva materia'}
+          eyebrow={editingId ? 'Edición activa' : 'Nueva materia'}
           title={editingId ? 'Actualiza una materia' : 'Registra una materia'}
-          description="Nombre, color y descripcion corta. Lo justo para mantener el panel ordenado."
+          description="Nombre, color y una nota breve."
           Icon={FiBookOpen}
         >
           <SubjectForm
@@ -201,8 +183,8 @@ export default function Subjects() {
 
         <SectionCard
           eyebrow={`${subjects.length} materia(s)`}
-          title="Listado personal de materias"
-          description="Vista breve de tus materias con tareas asociadas, avance y siguiente entrega."
+          title="Tus materias"
+          description="Avance, pendientes y próxima entrega por asignatura."
           Icon={FiLayers}
         >
           <SubjectList items={subjectInsights} onEdit={handleEdit} onDelete={handleDelete} />

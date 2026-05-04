@@ -4,4 +4,5 @@ export {
   loginUser,
   loginWithProvider,
   logoutUser,
+  registerUser,
 } from '../services/authService';

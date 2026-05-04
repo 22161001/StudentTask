@@ -8,12 +8,12 @@ export default function SubjectForm({ form, errors, isEditing, onChange, onSubmi
           value={form.nombre}
           onChange={onChange}
           className={`field-control ${errors.nombre ? 'border-rose-300 focus:border-rose-400 focus:shadow-[0_0_0_4px_rgba(244,63,94,0.12)]' : ''}`}
-          placeholder="Ej. Programacion, Matematicas o Historia"
+          placeholder="Ej. Programación, Matemáticas o Historia"
         />
         {errors.nombre ? <p className="mt-2 text-sm font-medium text-rose-600">{errors.nombre}</p> : null}
       </div>
 
-      <div className="rounded-[24px] border border-white/70 bg-white/[0.72] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
+      <div className="content-card p-4">
         <p className="text-sm font-medium text-slate-600">Color identificador</p>
         <div className="mt-3 flex items-center gap-4">
           <span className="h-12 w-12 rounded-[18px] shadow-inner" style={{ backgroundColor: form.color }} />
@@ -24,12 +24,12 @@ export default function SubjectForm({ form, errors, isEditing, onChange, onSubmi
             onChange={onChange}
             className="h-12 w-20 cursor-pointer rounded-2xl border border-slate-200 bg-white p-1"
           />
-          <p className="text-sm leading-6 text-slate-500">Se muestra en el listado y en el panel academico.</p>
+          <p className="text-sm leading-6 text-slate-500">Ayuda a reconocer la materia en listas y reportes.</p>
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-slate-600">Descripcion</label>
+        <label className="text-sm font-medium text-slate-600">Descripción</label>
         <textarea
           name="descripcion"
           value={form.descripcion}
