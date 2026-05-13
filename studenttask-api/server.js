@@ -272,6 +272,101 @@ const mapTeacherTask = (task) => ({
   porcentajeCumplimiento: Number(task.porcentaje_cumplimiento ?? 0),
 });
 
+const emptyTeacherTrackingSummary = {
+  totalTareasPublicadas: 0,
+  totalEntregasGeneradas: 0,
+  totalEntregasPendientes: 0,
+  totalEntregasCompletadas: 0,
+  porcentajeCumplimientoGeneral: 0,
+  tareasConBajoCumplimiento: [],
+  alumnosConMasPendientes: [],
+  resumenPorGrupo: [],
+  resumenPorMateria: [],
+  tareasRecientes: [],
+};
+
+const toNumber = (value, fallback = 0) => Number(value ?? fallback) || fallback;
+const calculatePercentage = (completed, total) => (Number(total) > 0 ? Math.round((Number(completed) / Number(total)) * 100) : 0);
+
+const mapTeacherTrackingTask = (task) => ({
+  ...mapTeacherTask(task),
+  porcentaje_cumplimiento: toNumber(task.porcentaje_cumplimiento),
+  porcentajeCumplimiento: toNumber(task.porcentaje_cumplimiento),
+});
+
+const mapTeacherTrackingGroup = (group) => ({
+  idGrupo: group.id_grupo,
+  id_grupo: group.id_grupo,
+  grupoNombre: group.grupo_nombre,
+  nombre_grupo: group.grupo_nombre,
+  totalTareas: toNumber(group.total_tareas),
+  total_tareas: toNumber(group.total_tareas),
+  totalEntregas: toNumber(group.total_entregas),
+  total_entregas: toNumber(group.total_entregas),
+  totalPendientes: toNumber(group.total_pendientes),
+  total_pendientes: toNumber(group.total_pendientes),
+  totalCompletadas: toNumber(group.total_completadas),
+  total_completadas: toNumber(group.total_completadas),
+  porcentajeCumplimiento: toNumber(group.porcentaje_cumplimiento),
+  porcentaje_cumplimiento: toNumber(group.porcentaje_cumplimiento),
+});
+
+const mapTeacherTrackingSubject = (subject) => ({
+  idMateria: subject.id_materia,
+  id_materia: subject.id_materia,
+  materiaNombre: subject.materia_nombre,
+  materia_nombre: subject.materia_nombre,
+  materiaColor: subject.materia_color ?? DEFAULT_SUBJECT_COLOR,
+  materia_color: subject.materia_color ?? DEFAULT_SUBJECT_COLOR,
+  totalTareas: toNumber(subject.total_tareas),
+  total_tareas: toNumber(subject.total_tareas),
+  totalEntregas: toNumber(subject.total_entregas),
+  total_entregas: toNumber(subject.total_entregas),
+  totalPendientes: toNumber(subject.total_pendientes),
+  total_pendientes: toNumber(subject.total_pendientes),
+  totalCompletadas: toNumber(subject.total_completadas),
+  total_completadas: toNumber(subject.total_completadas),
+  porcentajeCumplimiento: toNumber(subject.porcentaje_cumplimiento),
+  porcentaje_cumplimiento: toNumber(subject.porcentaje_cumplimiento),
+});
+
+const mapTeacherTrackingStudent = (student) => ({
+  idAlumno: student.id_alumno,
+  id_alumno: student.id_alumno,
+  nombre: student.nombre,
+  apellidos: student.apellidos,
+  nombreCompleto: `${student.nombre ?? ''} ${student.apellidos ?? ''}`.trim(),
+  email: student.email,
+  matricula: student.matricula,
+  totalPendientes: toNumber(student.total_pendientes),
+  total_pendientes: toNumber(student.total_pendientes),
+});
+
+const mapTeacherDeliveryTracking = (delivery) => ({
+  idEntrega: delivery.id_entrega,
+  id_entrega: delivery.id_entrega,
+  idAlumno: delivery.id_alumno,
+  id_alumno: delivery.id_alumno,
+  nombre: delivery.nombre,
+  apellidos: delivery.apellidos,
+  nombreCompleto: `${delivery.nombre ?? ''} ${delivery.apellidos ?? ''}`.trim(),
+  email: delivery.email,
+  matricula: delivery.matricula,
+  estado: delivery.estado ?? 'pendiente',
+  fechaEntrega: delivery.fecha_entrega,
+  fecha_entrega: delivery.fecha_entrega,
+  notaPersonal: delivery.nota_personal,
+  nota_personal: delivery.nota_personal,
+  observacion: delivery.observacion,
+  tiempoRealHoras: delivery.tiempo_real_horas === null ? null : Number(delivery.tiempo_real_horas),
+  tiempo_real_horas: delivery.tiempo_real_horas,
+  revisada: Boolean(delivery.revisada),
+  entregaATiempo: Boolean(delivery.entrega_a_tiempo),
+  entrega_a_tiempo: Boolean(delivery.entrega_a_tiempo),
+  entregaTarde: Boolean(delivery.entrega_tarde),
+  entrega_tarde: Boolean(delivery.entrega_tarde),
+});
+
 const fetchTeacherGroups = async (idDocente) => {
   const [rows] = await db.query(
     `SELECT
@@ -653,6 +748,822 @@ const fetchTeacherTaskStudents = async (idDocente, idTask) => {
     notaPersonal: student.nota_personal,
     revisada: Boolean(student.revisada),
   }));
+};
+
+const fetchTeacherTrackingSummary = async (idDocente) => {
+  const [statsRows] = await db.query(
+    `SELECT
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas_publicadas,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas_generadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS total_entregas_pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS total_entregas_completadas
+     FROM tareas_asignadas ta
+     LEFT JOIN entregas_alumno ea ON ea.id_tarea_asignada = ta.id_tarea_asignada
+     WHERE ta.id_docente = ?`,
+    [idDocente],
+  );
+
+  const stats = statsRows[0] ?? {};
+  const totalTareasPublicadas = toNumber(stats.total_tareas_publicadas);
+  const totalEntregasGeneradas = toNumber(stats.total_entregas_generadas);
+  const totalEntregasPendientes = toNumber(stats.total_entregas_pendientes);
+  const totalEntregasCompletadas = toNumber(stats.total_entregas_completadas);
+  const porcentajeCumplimientoGeneral = calculatePercentage(totalEntregasCompletadas, totalEntregasGeneradas);
+
+  if (totalTareasPublicadas === 0) {
+    return { ...emptyTeacherTrackingSummary };
+  }
+
+  const [lowTaskRows] = await db.query(
+    `SELECT
+       ta.id_tarea_asignada,
+       ta.id_grupo,
+       ta.id_materia,
+       ta.titulo,
+       ta.descripcion,
+       ta.instrucciones,
+       ta.enlace_apoyo,
+       m.nombre AS materia_nombre,
+       m.color AS materia_color,
+       g.nombre_grupo AS grupo_nombre,
+       g.carrera,
+       g.semestre,
+       ta.fecha_publicacion,
+       ta.fecha_limite,
+       ta.prioridad,
+       ta.activa,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT ag.id_alumno) AS total_alumnos,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS total_pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS total_completadas,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento
+     FROM tareas_asignadas ta
+     LEFT JOIN materias m ON m.id_materia = ta.id_materia
+     LEFT JOIN grupos g ON g.id_grupo = ta.id_grupo
+     LEFT JOIN alumno_grupo ag ON ag.id_grupo = ta.id_grupo AND ag.activo = 1
+     LEFT JOIN entregas_alumno ea ON ea.id_tarea_asignada = ta.id_tarea_asignada
+     WHERE ta.id_docente = ? AND ta.activa = 1
+     GROUP BY ta.id_tarea_asignada, ta.id_grupo, ta.id_materia, ta.titulo, ta.descripcion, ta.instrucciones, ta.enlace_apoyo,
+              m.nombre, m.color, g.nombre_grupo, g.carrera, g.semestre, ta.fecha_publicacion, ta.fecha_limite, ta.prioridad, ta.activa
+     HAVING total_entregas > 0 AND porcentaje_cumplimiento < 50
+     ORDER BY porcentaje_cumplimiento ASC, ta.fecha_limite ASC
+     LIMIT 6`,
+    [idDocente],
+  );
+
+  const [pendingStudentRows] = await db.query(
+    `SELECT
+       a.id_alumno,
+       u.nombre,
+       u.apellidos,
+       u.email,
+       a.matricula,
+       COUNT(DISTINCT ea.id_entrega) AS total_pendientes
+     FROM entregas_alumno ea
+     INNER JOIN tareas_asignadas ta ON ta.id_tarea_asignada = ea.id_tarea_asignada
+     INNER JOIN alumnos a ON a.id_alumno = ea.id_alumno
+     INNER JOIN usuarios u ON u.id_usuario = a.id_usuario AND u.activo = 1
+     WHERE ta.id_docente = ? AND ea.estado = 'pendiente'
+     GROUP BY a.id_alumno, u.nombre, u.apellidos, u.email, a.matricula
+     ORDER BY total_pendientes DESC, u.apellidos ASC, u.nombre ASC
+     LIMIT 6`,
+    [idDocente],
+  );
+
+  const [groupRows] = await db.query(
+    `SELECT
+       g.id_grupo,
+       g.nombre_grupo AS grupo_nombre,
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS total_pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS total_completadas,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento
+     FROM tareas_asignadas ta
+     LEFT JOIN grupos g ON g.id_grupo = ta.id_grupo
+     LEFT JOIN entregas_alumno ea ON ea.id_tarea_asignada = ta.id_tarea_asignada
+     WHERE ta.id_docente = ?
+     GROUP BY g.id_grupo, g.nombre_grupo
+     ORDER BY g.nombre_grupo ASC`,
+    [idDocente],
+  );
+
+  const [subjectRows] = await db.query(
+    `SELECT
+       m.id_materia,
+       m.nombre AS materia_nombre,
+       m.color AS materia_color,
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS total_pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS total_completadas,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento
+     FROM tareas_asignadas ta
+     LEFT JOIN materias m ON m.id_materia = ta.id_materia
+     LEFT JOIN entregas_alumno ea ON ea.id_tarea_asignada = ta.id_tarea_asignada
+     WHERE ta.id_docente = ?
+     GROUP BY m.id_materia, m.nombre, m.color
+     ORDER BY m.nombre ASC`,
+    [idDocente],
+  );
+
+  const tareasRecientes = await fetchTeacherTasks(idDocente);
+
+  return {
+    totalTareasPublicadas,
+    totalEntregasGeneradas,
+    totalEntregasPendientes,
+    totalEntregasCompletadas,
+    porcentajeCumplimientoGeneral,
+    tareasConBajoCumplimiento: lowTaskRows.map(mapTeacherTrackingTask),
+    alumnosConMasPendientes: pendingStudentRows.map(mapTeacherTrackingStudent),
+    resumenPorGrupo: groupRows.map(mapTeacherTrackingGroup),
+    resumenPorMateria: subjectRows.map(mapTeacherTrackingSubject),
+    tareasRecientes,
+  };
+};
+
+const fetchTeacherTaskTracking = async (idDocente, idTask) => {
+  const task = await fetchTeacherTaskById(idDocente, idTask);
+  if (!task) {
+    return null;
+  }
+
+  const [deliveryRows] = await db.query(
+    `SELECT
+       ea.id_entrega,
+       a.id_alumno,
+       u.nombre,
+       u.apellidos,
+       u.email,
+       a.matricula,
+       COALESCE(ea.estado, 'pendiente') AS estado,
+       ea.fecha_entrega,
+       ea.nota_personal,
+       ea.observacion,
+       ea.tiempo_real_horas,
+       COALESCE(ea.revisada, 0) AS revisada,
+       CASE WHEN ea.estado = 'completada' AND ea.fecha_entrega IS NOT NULL AND ea.fecha_entrega <= ta.fecha_limite THEN 1 ELSE 0 END AS entrega_a_tiempo,
+       CASE WHEN ea.estado = 'completada' AND ea.fecha_entrega IS NOT NULL AND ea.fecha_entrega > ta.fecha_limite THEN 1 ELSE 0 END AS entrega_tarde
+     FROM tareas_asignadas ta
+     INNER JOIN alumno_grupo ag ON ag.id_grupo = ta.id_grupo AND ag.activo = 1
+     INNER JOIN alumnos a ON a.id_alumno = ag.id_alumno
+     INNER JOIN usuarios u ON u.id_usuario = a.id_usuario AND u.activo = 1
+     LEFT JOIN entregas_alumno ea ON ea.id_tarea_asignada = ta.id_tarea_asignada AND ea.id_alumno = a.id_alumno
+     WHERE ta.id_tarea_asignada = ? AND ta.id_docente = ?
+     ORDER BY u.apellidos ASC, u.nombre ASC`,
+    [idTask, idDocente],
+  );
+
+  const entregas = deliveryRows.map(mapTeacherDeliveryTracking);
+  const totalAlumnos = entregas.length;
+  const totalCompletadas = entregas.filter((delivery) => delivery.estado === 'completada').length;
+  const totalPendientes = Math.max(totalAlumnos - totalCompletadas, 0);
+  const entregasATiempo = entregas.filter((delivery) => delivery.entregaATiempo).length;
+  const entregasTarde = entregas.filter((delivery) => delivery.entregaTarde).length;
+  const porcentajeCumplimiento = calculatePercentage(totalCompletadas, totalAlumnos);
+
+  return {
+    tarea: task,
+    metricas: {
+      totalAlumnos,
+      totalPendientes,
+      totalCompletadas,
+      porcentajeCumplimiento,
+      porcentajePendiente: totalAlumnos > 0 ? Math.max(100 - porcentajeCumplimiento, 0) : 0,
+      entregasATiempo,
+      entregasTarde,
+    },
+    entregas,
+  };
+};
+
+const findTeacherDelivery = async (idDocente, idEntrega) => {
+  const [rows] = await db.query(
+    `SELECT ea.id_entrega
+     FROM entregas_alumno ea
+     INNER JOIN tareas_asignadas ta ON ta.id_tarea_asignada = ea.id_tarea_asignada
+     WHERE ea.id_entrega = ? AND ta.id_docente = ?`,
+    [idEntrega, idDocente],
+  );
+
+  return rows[0] ?? null;
+};
+
+const parseBooleanField = (value) => {
+  if (value === undefined) {
+    return { provided: false, valid: true, value: null };
+  }
+
+  if (value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true') {
+    return { provided: true, valid: true, value: 1 };
+  }
+
+  if (value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false') {
+    return { provided: true, valid: true, value: 0 };
+  }
+
+  return { provided: true, valid: false, value: null };
+};
+
+const emptyTeacherReportSummary = {
+  totalGrupos: 0,
+  totalMaterias: 0,
+  totalAlumnos: 0,
+  totalTareasPublicadas: 0,
+  totalEntregas: 0,
+  entregasCompletadas: 0,
+  entregasPendientes: 0,
+  entregasRevisadas: 0,
+  entregasSinRevisar: 0,
+  porcentajeCumplimientoGeneral: 0,
+  porcentajeRevisionGeneral: 0,
+  tareasConBajoCumplimiento: [],
+  grupoMayorCumplimiento: null,
+  grupoMenorCumplimiento: null,
+  materiaMayorCarga: null,
+  alumnoMasPendientes: null,
+};
+
+const normalizePositiveIntegerFilter = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const numberValue = Number(value);
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : Number.NaN;
+};
+
+const normalizeReportDateFilter = (value, endOfDay = false) => {
+  const rawValue = normalizeText(value);
+  if (!rawValue) return null;
+
+  const dateMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/);
+  if (!dateMatch) {
+    return normalizeDateForDb(rawValue);
+  }
+
+  const [, yearValue, monthValue, dayValue] = dateMatch;
+  const date = new Date(`${yearValue}-${monthValue}-${dayValue}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return `${yearValue}-${monthValue}-${dayValue} ${endOfDay ? '23:59:59' : '00:00:00'}`;
+};
+
+const normalizeReportFilters = (query = {}) => {
+  const errors = {};
+  const idGrupo = normalizePositiveIntegerFilter(query.idGrupo ?? query.id_grupo);
+  const idMateria = normalizePositiveIntegerFilter(query.idMateria ?? query.id_materia ?? query.materiaId);
+  const fechaInicioRaw = query.fechaInicio ?? query.fecha_inicio;
+  const fechaFinRaw = query.fechaFin ?? query.fecha_fin;
+  const fechaInicio = normalizeReportDateFilter(fechaInicioRaw, false);
+  const fechaFin = normalizeReportDateFilter(fechaFinRaw, true);
+  const periodo = normalizeText(query.periodo);
+  const estadoRaw = normalizeText(query.estado).toLowerCase();
+  const prioridadRaw = normalizeText(query.prioridad).toLowerCase();
+  const prioridad = prioridadRaw ? normalizePriority(prioridadRaw) : '';
+  const validReportStates = new Set(['pendiente', 'completada', 'revisada', 'sin-revisar', 'activa', 'inactiva']);
+  const estado = estadoRaw && estadoRaw !== 'all' && estadoRaw !== 'todos' ? estadoRaw : '';
+
+  if (Number.isNaN(idGrupo)) errors.idGrupo = 'El grupo solicitado no es válido.';
+  if (Number.isNaN(idMateria)) errors.idMateria = 'La materia solicitada no es válida.';
+  if (fechaInicioRaw && !fechaInicio) errors.fechaInicio = 'La fecha de inicio no es válida.';
+  if (fechaFinRaw && !fechaFin) errors.fechaFin = 'La fecha de fin no es válida.';
+  if (fechaInicio && fechaFin && fechaInicio > fechaFin) errors.fechaFin = 'La fecha final debe ser posterior a la fecha inicial.';
+  if (prioridadRaw && !prioridad) errors.prioridad = 'La prioridad debe ser baja, media o alta.';
+  if (estado && !validReportStates.has(estado)) errors.estado = 'El estado solicitado no es válido.';
+
+  return {
+    errors,
+    filters: {
+      idGrupo: Number.isNaN(idGrupo) ? null : idGrupo,
+      idMateria: Number.isNaN(idMateria) ? null : idMateria,
+      periodo,
+      fechaInicio,
+      fechaFin,
+      estado,
+      prioridad,
+    },
+  };
+};
+
+const buildReportAssignmentWhere = (idDocente, filters = {}, groupAlias = 'g') => {
+  const conditions = ['dgm.id_docente = ?', 'dgm.activo = 1'];
+  const params = [idDocente];
+
+  if (groupAlias) {
+    conditions.push(`${groupAlias}.activo = 1`);
+  }
+
+  if (filters.idGrupo) {
+    conditions.push('dgm.id_grupo = ?');
+    params.push(filters.idGrupo);
+  }
+
+  if (filters.idMateria) {
+    conditions.push('dgm.id_materia = ?');
+    params.push(filters.idMateria);
+  }
+
+  if (filters.periodo) {
+    conditions.push('dgm.periodo = ?');
+    params.push(filters.periodo);
+  }
+
+  return { sql: conditions.join(' AND '), params };
+};
+
+const buildReportTaskJoinFilters = (filters = {}, alias = 'ta') => {
+  const conditions = [];
+  const params = [];
+
+  if (filters.fechaInicio) {
+    conditions.push(`${alias}.fecha_publicacion >= ?`);
+    params.push(filters.fechaInicio);
+  }
+
+  if (filters.fechaFin) {
+    conditions.push(`${alias}.fecha_publicacion <= ?`);
+    params.push(filters.fechaFin);
+  }
+
+  if (filters.prioridad) {
+    conditions.push(`${alias}.prioridad = ?`);
+    params.push(filters.prioridad);
+  }
+
+  if (filters.estado === 'activa') {
+    conditions.push(`${alias}.activa = 1`);
+  }
+
+  if (filters.estado === 'inactiva') {
+    conditions.push(`${alias}.activa = 0`);
+  }
+
+  return {
+    sql: conditions.length > 0 ? ` AND ${conditions.join(' AND ')}` : '',
+    params,
+  };
+};
+
+const buildReportDeliveryJoinFilters = (filters = {}, alias = 'ea') => {
+  const conditions = [];
+
+  if (filters.estado === 'pendiente' || filters.estado === 'completada') {
+    conditions.push(`${alias}.estado = '${filters.estado}'`);
+  }
+
+  if (filters.estado === 'revisada') {
+    conditions.push(`${alias}.revisada = 1`);
+  }
+
+  if (filters.estado === 'sin-revisar') {
+    conditions.push(`COALESCE(${alias}.revisada, 0) = 0`);
+  }
+
+  return conditions.length > 0 ? ` AND ${conditions.join(' AND ')}` : '';
+};
+
+const getTaskReportStatus = (totalEntregas, percentage) => {
+  if (toNumber(totalEntregas) === 0) return 'sin entregas';
+  if (toNumber(percentage) >= 80) return 'alto cumplimiento';
+  if (toNumber(percentage) >= 50) return 'cumplimiento medio';
+  return 'bajo cumplimiento';
+};
+
+const getAcademicLoad = (totalTasks, totalDeliveries, totalGroups) => {
+  const score = toNumber(totalTasks) * 2 + toNumber(totalGroups) * 2 + Math.ceil(toNumber(totalDeliveries) / 30);
+  if (score >= 12) return 'Alta';
+  if (score >= 5) return 'Media';
+  return 'Baja';
+};
+
+const mapTeacherReportGroup = (row) => ({
+  idGrupo: row.id_grupo,
+  id_grupo: row.id_grupo,
+  nombreGrupo: row.nombre_grupo,
+  nombre_grupo: row.nombre_grupo,
+  carrera: row.carrera,
+  semestre: row.semestre,
+  turno: row.turno,
+  totalAlumnos: toNumber(row.total_alumnos),
+  total_alumnos: toNumber(row.total_alumnos),
+  totalTareas: toNumber(row.total_tareas),
+  total_tareas: toNumber(row.total_tareas),
+  totalEntregas: toNumber(row.total_entregas),
+  total_entregas: toNumber(row.total_entregas),
+  completadas: toNumber(row.completadas),
+  pendientes: toNumber(row.pendientes),
+  revisadas: toNumber(row.revisadas),
+  sinRevisar: toNumber(row.sin_revisar),
+  sin_revisar: toNumber(row.sin_revisar),
+  porcentajeCumplimiento: toNumber(row.porcentaje_cumplimiento),
+  porcentaje_cumplimiento: toNumber(row.porcentaje_cumplimiento),
+  porcentajeRevision: toNumber(row.porcentaje_revision),
+  porcentaje_revision: toNumber(row.porcentaje_revision),
+  materias: normalizeText(row.materias).split(', ').filter(Boolean),
+  materiaPrincipal: normalizeText(row.materia_principal),
+  materia_principal: normalizeText(row.materia_principal),
+});
+
+const mapTeacherReportSubject = (row) => {
+  const totalTareasPublicadas = toNumber(row.total_tareas_publicadas);
+  const totalEntregas = toNumber(row.total_entregas);
+  const totalGrupos = toNumber(row.total_grupos);
+
+  return {
+    idMateria: row.id_materia,
+    id_materia: row.id_materia,
+    nombre: row.nombre,
+    materiaNombre: row.nombre,
+    materia_nombre: row.nombre,
+    color: row.color ?? DEFAULT_SUBJECT_COLOR,
+    descripcion: row.descripcion ?? '',
+    totalGrupos,
+    total_grupos: totalGrupos,
+    totalAlumnos: toNumber(row.total_alumnos),
+    total_alumnos: toNumber(row.total_alumnos),
+    totalTareasPublicadas,
+    total_tareas_publicadas: totalTareasPublicadas,
+    totalEntregas,
+    total_entregas: totalEntregas,
+    completadas: toNumber(row.completadas),
+    pendientes: toNumber(row.pendientes),
+    porcentajeCumplimiento: toNumber(row.porcentaje_cumplimiento),
+    porcentaje_cumplimiento: toNumber(row.porcentaje_cumplimiento),
+    tareasConBajoCumplimiento: toNumber(row.tareas_con_bajo_cumplimiento),
+    tareas_con_bajo_cumplimiento: toNumber(row.tareas_con_bajo_cumplimiento),
+    cargaAcademica: getAcademicLoad(totalTareasPublicadas, totalEntregas, totalGrupos),
+    carga_academica: getAcademicLoad(totalTareasPublicadas, totalEntregas, totalGrupos),
+    grupos: normalizeText(row.grupos).split(', ').filter(Boolean),
+  };
+};
+
+const mapTeacherReportStudent = (row) => ({
+  idAlumno: row.id_alumno,
+  id_alumno: row.id_alumno,
+  nombre: row.nombre,
+  apellidos: row.apellidos,
+  nombreCompleto: `${row.nombre ?? ''} ${row.apellidos ?? ''}`.trim(),
+  nombre_completo: `${row.nombre ?? ''} ${row.apellidos ?? ''}`.trim(),
+  matricula: row.matricula,
+  email: row.email,
+  grupo: row.grupo,
+  carrera: row.carrera,
+  totalTareasAsignadas: toNumber(row.total_tareas_asignadas),
+  total_tareas_asignadas: toNumber(row.total_tareas_asignadas),
+  completadas: toNumber(row.completadas),
+  pendientes: toNumber(row.pendientes),
+  revisadas: toNumber(row.revisadas),
+  sinRevisar: toNumber(row.sin_revisar),
+  sin_revisar: toNumber(row.sin_revisar),
+  porcentajeCumplimiento: toNumber(row.porcentaje_cumplimiento),
+  porcentaje_cumplimiento: toNumber(row.porcentaje_cumplimiento),
+  tareasPendientesAltaPrioridad: toNumber(row.tareas_pendientes_alta_prioridad),
+  tareas_pendientes_alta_prioridad: toNumber(row.tareas_pendientes_alta_prioridad),
+  ultimaEntrega: row.ultima_entrega,
+  ultima_entrega: row.ultima_entrega,
+});
+
+const mapTeacherReportTask = (row) => {
+  const totalEntregas = toNumber(row.total_entregas);
+  const percentage = toNumber(row.porcentaje_cumplimiento);
+
+  return {
+    idTarea: row.id_tarea_asignada,
+    id_tarea_asignada: row.id_tarea_asignada,
+    idGrupo: row.id_grupo,
+    id_grupo: row.id_grupo,
+    idMateria: row.id_materia,
+    id_materia: row.id_materia,
+    titulo: row.titulo,
+    materia: row.materia,
+    grupo: row.grupo,
+    fechaPublicacion: row.fecha_publicacion,
+    fecha_publicacion: row.fecha_publicacion,
+    fechaLimite: row.fecha_limite,
+    fecha_limite: row.fecha_limite,
+    prioridad: row.prioridad,
+    activa: Boolean(row.activa),
+    totalAlumnos: toNumber(row.total_alumnos),
+    total_alumnos: toNumber(row.total_alumnos),
+    totalEntregas,
+    total_entregas: totalEntregas,
+    completadas: toNumber(row.completadas),
+    pendientes: toNumber(row.pendientes),
+    revisadas: toNumber(row.revisadas),
+    sinRevisar: toNumber(row.sin_revisar),
+    sin_revisar: toNumber(row.sin_revisar),
+    porcentajeCumplimiento: percentage,
+    porcentaje_cumplimiento: percentage,
+    porcentajeRevision: toNumber(row.porcentaje_revision),
+    porcentaje_revision: toNumber(row.porcentaje_revision),
+    entregasATiempo: toNumber(row.entregas_a_tiempo),
+    entregas_a_tiempo: toNumber(row.entregas_a_tiempo),
+    entregasTarde: toNumber(row.entregas_tarde),
+    entregas_tarde: toNumber(row.entregas_tarde),
+    estadoGeneral: getTaskReportStatus(totalEntregas, percentage),
+    estado_general: getTaskReportStatus(totalEntregas, percentage),
+  };
+};
+
+const fetchTeacherGroupReports = async (idDocente, filters = {}) => {
+  const assignmentWhere = buildReportAssignmentWhere(idDocente, filters, 'g');
+  const taskFilters = buildReportTaskJoinFilters(filters, 'ta');
+  const deliveryFilters = buildReportDeliveryJoinFilters(filters, 'ea');
+
+  const [rows] = await db.query(
+    `SELECT
+       g.id_grupo,
+       g.nombre_grupo,
+       g.carrera,
+       g.semestre,
+       g.turno,
+       COUNT(DISTINCT ag.id_alumno) AS total_alumnos,
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS completadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.revisada = 1 THEN ea.id_entrega END) AS revisadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND COALESCE(ea.revisada, 0) = 0 THEN ea.id_entrega END) AS sin_revisar,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento,
+       CASE
+         WHEN COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.revisada = 1 THEN ea.id_entrega END) /
+              COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END)) * 100)
+       END AS porcentaje_revision,
+       GROUP_CONCAT(DISTINCT m.nombre ORDER BY m.nombre SEPARATOR ', ') AS materias,
+       MIN(m.nombre) AS materia_principal
+     FROM docente_grupo_materia dgm
+     INNER JOIN grupos g ON g.id_grupo = dgm.id_grupo
+     INNER JOIN materias m ON m.id_materia = dgm.id_materia AND m.activa = 1
+     LEFT JOIN alumno_grupo ag ON ag.id_grupo = g.id_grupo AND ag.activo = 1
+     LEFT JOIN tareas_asignadas ta
+       ON ta.id_docente = dgm.id_docente
+      AND ta.id_grupo = dgm.id_grupo
+      AND ta.id_materia = dgm.id_materia
+      ${taskFilters.sql}
+     LEFT JOIN entregas_alumno ea
+       ON ea.id_tarea_asignada = ta.id_tarea_asignada
+      AND ea.id_alumno = ag.id_alumno
+      ${deliveryFilters}
+     WHERE ${assignmentWhere.sql}
+     GROUP BY g.id_grupo, g.nombre_grupo, g.carrera, g.semestre, g.turno
+     ORDER BY porcentaje_cumplimiento ASC, pendientes DESC, g.nombre_grupo ASC`,
+    [...taskFilters.params, ...assignmentWhere.params],
+  );
+
+  return rows.map(mapTeacherReportGroup);
+};
+
+const fetchTeacherSubjectReports = async (idDocente, filters = {}) => {
+  const assignmentWhere = buildReportAssignmentWhere(idDocente, filters, 'g');
+  const taskFilters = buildReportTaskJoinFilters(filters, 'ta');
+  const deliveryFilters = buildReportDeliveryJoinFilters(filters, 'ea');
+
+  const [rows] = await db.query(
+    `SELECT
+       m.id_materia,
+       m.nombre,
+       m.color,
+       m.descripcion,
+       COUNT(DISTINCT dgm.id_grupo) AS total_grupos,
+       COUNT(DISTINCT ag.id_alumno) AS total_alumnos,
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas_publicadas,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS completadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS pendientes,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento,
+       COUNT(DISTINCT CASE
+         WHEN ta.id_tarea_asignada IS NOT NULL
+          AND (SELECT COUNT(*)
+               FROM entregas_alumno ea_low
+               WHERE ea_low.id_tarea_asignada = ta.id_tarea_asignada) > 0
+          AND (SELECT ROUND((COUNT(CASE WHEN ea_low.estado = 'completada' THEN 1 END) / COUNT(*)) * 100)
+               FROM entregas_alumno ea_low
+               WHERE ea_low.id_tarea_asignada = ta.id_tarea_asignada) < 50
+         THEN ta.id_tarea_asignada
+       END) AS tareas_con_bajo_cumplimiento,
+       GROUP_CONCAT(DISTINCT g.nombre_grupo ORDER BY g.nombre_grupo SEPARATOR ', ') AS grupos
+     FROM docente_grupo_materia dgm
+     INNER JOIN materias m ON m.id_materia = dgm.id_materia AND m.activa = 1
+     INNER JOIN grupos g ON g.id_grupo = dgm.id_grupo
+     LEFT JOIN alumno_grupo ag ON ag.id_grupo = g.id_grupo AND ag.activo = 1
+     LEFT JOIN tareas_asignadas ta
+       ON ta.id_docente = dgm.id_docente
+      AND ta.id_grupo = dgm.id_grupo
+      AND ta.id_materia = dgm.id_materia
+      ${taskFilters.sql}
+     LEFT JOIN entregas_alumno ea
+       ON ea.id_tarea_asignada = ta.id_tarea_asignada
+      AND ea.id_alumno = ag.id_alumno
+      ${deliveryFilters}
+     WHERE ${assignmentWhere.sql}
+     GROUP BY m.id_materia, m.nombre, m.color, m.descripcion
+     ORDER BY total_tareas_publicadas DESC, m.nombre ASC`,
+    [...taskFilters.params, ...assignmentWhere.params],
+  );
+
+  return rows.map(mapTeacherReportSubject);
+};
+
+const fetchTeacherStudentReports = async (idDocente, filters = {}) => {
+  const assignmentWhere = buildReportAssignmentWhere(idDocente, filters, 'g');
+  const taskFilters = buildReportTaskJoinFilters(filters, 'ta');
+  const deliveryFilters = buildReportDeliveryJoinFilters(filters, 'ea');
+
+  const [rows] = await db.query(
+    `SELECT
+       a.id_alumno,
+       u.nombre,
+       u.apellidos,
+       u.email,
+       a.matricula,
+       g.nombre_grupo AS grupo,
+       a.carrera,
+       COUNT(DISTINCT ta.id_tarea_asignada) AS total_tareas_asignadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS completadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.revisada = 1 THEN ea.id_entrega END) AS revisadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND COALESCE(ea.revisada, 0) = 0 THEN ea.id_entrega END) AS sin_revisar,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento,
+       COUNT(DISTINCT CASE WHEN ta.prioridad = 'alta' AND ea.estado = 'pendiente' THEN ea.id_entrega END) AS tareas_pendientes_alta_prioridad,
+       MAX(CASE WHEN ea.estado = 'completada' THEN ea.fecha_entrega ELSE NULL END) AS ultima_entrega
+     FROM docente_grupo_materia dgm
+     INNER JOIN grupos g ON g.id_grupo = dgm.id_grupo
+     INNER JOIN alumno_grupo ag ON ag.id_grupo = g.id_grupo AND ag.activo = 1
+     INNER JOIN alumnos a ON a.id_alumno = ag.id_alumno
+     INNER JOIN usuarios u ON u.id_usuario = a.id_usuario AND u.activo = 1
+     LEFT JOIN tareas_asignadas ta
+       ON ta.id_docente = dgm.id_docente
+      AND ta.id_grupo = dgm.id_grupo
+      AND ta.id_materia = dgm.id_materia
+      ${taskFilters.sql}
+     LEFT JOIN entregas_alumno ea
+       ON ea.id_tarea_asignada = ta.id_tarea_asignada
+      AND ea.id_alumno = a.id_alumno
+      ${deliveryFilters}
+     WHERE ${assignmentWhere.sql}
+     GROUP BY a.id_alumno, u.nombre, u.apellidos, u.email, a.matricula, g.nombre_grupo, a.carrera
+     ORDER BY pendientes DESC, porcentaje_cumplimiento ASC, u.apellidos ASC, u.nombre ASC`,
+    [...taskFilters.params, ...assignmentWhere.params],
+  );
+
+  return rows.map(mapTeacherReportStudent);
+};
+
+const fetchTeacherTaskReports = async (idDocente, filters = {}) => {
+  const taskFilters = buildReportTaskJoinFilters(filters, 'ta');
+  const deliveryFilters = buildReportDeliveryJoinFilters(filters, 'ea');
+  const conditions = ['ta.id_docente = ?', 'dgm.activo = 1'];
+  const params = [idDocente];
+
+  if (filters.idGrupo) {
+    conditions.push('ta.id_grupo = ?');
+    params.push(filters.idGrupo);
+  }
+
+  if (filters.idMateria) {
+    conditions.push('ta.id_materia = ?');
+    params.push(filters.idMateria);
+  }
+
+  if (filters.periodo) {
+    conditions.push('dgm.periodo = ?');
+    params.push(filters.periodo);
+  }
+
+  const [rows] = await db.query(
+    `SELECT
+       ta.id_tarea_asignada,
+       ta.id_grupo,
+       ta.id_materia,
+       ta.titulo,
+       m.nombre AS materia,
+       g.nombre_grupo AS grupo,
+       ta.fecha_publicacion,
+       ta.fecha_limite,
+       ta.prioridad,
+       ta.activa,
+       COUNT(DISTINCT ag.id_alumno) AS total_alumnos,
+       COUNT(DISTINCT ea.id_entrega) AS total_entregas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) AS completadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'pendiente' THEN ea.id_entrega END) AS pendientes,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.revisada = 1 THEN ea.id_entrega END) AS revisadas,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND COALESCE(ea.revisada, 0) = 0 THEN ea.id_entrega END) AS sin_revisar,
+       CASE
+         WHEN COUNT(DISTINCT ea.id_entrega) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) / COUNT(DISTINCT ea.id_entrega)) * 100)
+       END AS porcentaje_cumplimiento,
+       CASE
+         WHEN COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END) = 0 THEN 0
+         ELSE ROUND((COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.revisada = 1 THEN ea.id_entrega END) /
+              COUNT(DISTINCT CASE WHEN ea.estado = 'completada' THEN ea.id_entrega END)) * 100)
+       END AS porcentaje_revision,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.fecha_entrega <= ta.fecha_limite THEN ea.id_entrega END) AS entregas_a_tiempo,
+       COUNT(DISTINCT CASE WHEN ea.estado = 'completada' AND ea.fecha_entrega > ta.fecha_limite THEN ea.id_entrega END) AS entregas_tarde
+     FROM tareas_asignadas ta
+     INNER JOIN docente_grupo_materia dgm
+       ON dgm.id_docente = ta.id_docente
+      AND dgm.id_grupo = ta.id_grupo
+      AND dgm.id_materia = ta.id_materia
+     LEFT JOIN materias m ON m.id_materia = ta.id_materia
+     LEFT JOIN grupos g ON g.id_grupo = ta.id_grupo
+     LEFT JOIN alumno_grupo ag ON ag.id_grupo = ta.id_grupo AND ag.activo = 1
+     LEFT JOIN entregas_alumno ea
+       ON ea.id_tarea_asignada = ta.id_tarea_asignada
+      AND ea.id_alumno = ag.id_alumno
+      ${deliveryFilters}
+     WHERE ${conditions.join(' AND ')}${taskFilters.sql}
+     GROUP BY ta.id_tarea_asignada, ta.id_grupo, ta.id_materia, ta.titulo, m.nombre, g.nombre_grupo,
+              ta.fecha_publicacion, ta.fecha_limite, ta.prioridad, ta.activa
+     ORDER BY porcentaje_cumplimiento ASC, pendientes DESC, ta.fecha_limite ASC`,
+    [...params, ...taskFilters.params],
+  );
+
+  return rows.map(mapTeacherReportTask);
+};
+
+const buildTeacherReportSummary = async (idDocente, filters = {}) => {
+  const [groups, subjects, students, tasks] = await Promise.all([
+    fetchTeacherGroupReports(idDocente, filters),
+    fetchTeacherSubjectReports(idDocente, filters),
+    fetchTeacherStudentReports(idDocente, filters),
+    fetchTeacherTaskReports(idDocente, filters),
+  ]);
+
+  if (groups.length === 0 && subjects.length === 0 && students.length === 0 && tasks.length === 0) {
+    return { ...emptyTeacherReportSummary };
+  }
+
+  const totalEntregas = tasks.reduce((total, task) => total + task.totalEntregas, 0);
+  const entregasCompletadas = tasks.reduce((total, task) => total + task.completadas, 0);
+  const entregasPendientes = tasks.reduce((total, task) => total + task.pendientes, 0);
+  const entregasRevisadas = tasks.reduce((total, task) => total + task.revisadas, 0);
+  const entregasSinRevisar = tasks.reduce((total, task) => total + task.sinRevisar, 0);
+  const groupsWithDeliveries = groups.filter((group) => group.totalEntregas > 0);
+  const sortedGroupsByCompliance = [...groupsWithDeliveries].sort((a, b) => b.porcentajeCumplimiento - a.porcentajeCumplimiento);
+  const sortedSubjectsByLoad = [...subjects].sort((a, b) => b.totalTareasPublicadas - a.totalTareasPublicadas);
+  const sortedStudentsByPending = [...students].sort((a, b) => b.pendientes - a.pendientes);
+  const lowTasks = tasks.filter((task) => task.estadoGeneral === 'bajo cumplimiento');
+
+  const mapGroupHighlight = (group) =>
+    group
+      ? {
+          idGrupo: group.idGrupo,
+          nombreGrupo: group.nombreGrupo,
+          porcentaje: group.porcentajeCumplimiento,
+        }
+      : null;
+
+  const topSubject = sortedSubjectsByLoad[0] ?? null;
+  const topStudent = sortedStudentsByPending[0] ?? null;
+
+  return {
+    totalGrupos: groups.length,
+    totalMaterias: subjects.length,
+    totalAlumnos: students.length,
+    totalTareasPublicadas: tasks.length,
+    totalEntregas,
+    entregasCompletadas,
+    entregasPendientes,
+    entregasRevisadas,
+    entregasSinRevisar,
+    porcentajeCumplimientoGeneral: calculatePercentage(entregasCompletadas, totalEntregas),
+    porcentajeRevisionGeneral: calculatePercentage(entregasRevisadas, entregasCompletadas),
+    tareasConBajoCumplimiento: lowTasks.slice(0, 6),
+    grupoMayorCumplimiento: mapGroupHighlight(sortedGroupsByCompliance[0]),
+    grupoMenorCumplimiento: mapGroupHighlight(sortedGroupsByCompliance[sortedGroupsByCompliance.length - 1]),
+    materiaMayorCarga: topSubject
+      ? {
+          idMateria: topSubject.idMateria,
+          nombre: topSubject.nombre,
+          totalTareas: topSubject.totalTareasPublicadas,
+        }
+      : null,
+    alumnoMasPendientes: topStudent
+      ? {
+          idAlumno: topStudent.idAlumno,
+          nombreCompleto: topStudent.nombreCompleto,
+          totalPendientes: topStudent.pendientes,
+        }
+      : null,
+  };
 };
 
 const findTeacherAssignment = async (idDocente, idGrupo, idMateria, runner = db) => {
@@ -1692,6 +2603,108 @@ app.get(
 
     const tareas = await fetchTeacherTasks(teacher.id_docente);
     sendOk(res, 'Tareas del docente cargadas correctamente.', { tareas });
+  }),
+);
+
+app.get(
+  '/api/docente/seguimiento',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const teacher = await requireTeacher(req, res);
+    if (!teacher) return;
+
+    const summary = await fetchTeacherTrackingSummary(teacher.id_docente);
+    sendOk(res, 'Seguimiento docente cargado correctamente.', summary);
+  }),
+);
+
+const sendTeacherReport = (handler, successMessage) =>
+  asyncRoute(async (req, res) => {
+    const teacher = await requireTeacher(req, res);
+    if (!teacher) return;
+
+    const { errors, filters } = normalizeReportFilters(req.query);
+    if (Object.keys(errors).length > 0) {
+      return sendError(res, 400, 'Revisa los filtros del reporte.', errors);
+    }
+
+    const data = await handler(teacher.id_docente, filters);
+    sendOk(res, successMessage, data);
+  });
+
+app.get('/api/docente/reportes/resumen', authenticate, sendTeacherReport(buildTeacherReportSummary, 'Resumen de reportes docentes cargado correctamente.'));
+app.get('/api/docente/reportes/grupos', authenticate, sendTeacherReport(fetchTeacherGroupReports, 'Reporte por grupos cargado correctamente.'));
+app.get('/api/docente/reportes/materias', authenticate, sendTeacherReport(fetchTeacherSubjectReports, 'Reporte por materias cargado correctamente.'));
+app.get('/api/docente/reportes/alumnos', authenticate, sendTeacherReport(fetchTeacherStudentReports, 'Reporte por alumnos cargado correctamente.'));
+app.get('/api/docente/reportes/tareas', authenticate, sendTeacherReport(fetchTeacherTaskReports, 'Reporte por tareas cargado correctamente.'));
+
+app.get(
+  '/api/docente/tareas/:id/seguimiento',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const teacher = await requireTeacher(req, res);
+    if (!teacher) return;
+
+    const taskId = Number(req.params.id);
+    if (!Number.isInteger(taskId) || taskId <= 0) {
+      return sendError(res, 400, 'La tarea solicitada no es válida.');
+    }
+
+    const tracking = await fetchTeacherTaskTracking(teacher.id_docente, taskId);
+    if (!tracking) {
+      return sendError(res, 403, 'No tienes permiso para consultar esta tarea.');
+    }
+
+    sendOk(res, 'Seguimiento de tarea cargado correctamente.', tracking);
+  }),
+);
+
+app.patch(
+  '/api/docente/entregas/:id/revisar',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const teacher = await requireTeacher(req, res);
+    if (!teacher) return;
+
+    const deliveryId = Number(req.params.id);
+    if (!Number.isInteger(deliveryId) || deliveryId <= 0) {
+      return sendError(res, 400, 'La entrega solicitada no es válida.');
+    }
+
+    const existingDelivery = await findTeacherDelivery(teacher.id_docente, deliveryId);
+    if (!existingDelivery) {
+      return sendError(res, 403, 'No tienes permiso para revisar esta entrega.');
+    }
+
+    const reviewInput = parseBooleanField(req.body.revisada);
+    const hasObservation = req.body.observacion !== undefined;
+    const observation = normalizeText(req.body.observacion);
+
+    if (!reviewInput.valid) {
+      return sendError(res, 400, 'El campo revisada debe ser booleano.', { revisada: 'Debe ser verdadero o falso.' });
+    }
+
+    if (!reviewInput.provided && !hasObservation) {
+      return sendError(res, 400, 'Envía revisada u observacion para actualizar la entrega.');
+    }
+
+    const fields = [];
+    const params = [];
+
+    if (reviewInput.provided) {
+      fields.push('revisada = ?');
+      params.push(reviewInput.value);
+    }
+
+    if (hasObservation) {
+      fields.push('observacion = ?');
+      params.push(observation || null);
+    }
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    await db.query(`UPDATE entregas_alumno SET ${fields.join(', ')} WHERE id_entrega = ?`, [...params, deliveryId]);
+
+    sendOk(res, 'Entrega actualizada correctamente.');
   }),
 );
 

@@ -119,11 +119,60 @@ alumno@itoaxaca.edu.mx
 12345678
 ```
 
-Queda pendiente para la Subfase 2.4:
+Completado en la Subfase 2.4:
 
 - Seguimiento detallado por tarea.
-- Filtros avanzados de cumplimiento.
-- Reportes docentes.
+- Filtros de cumplimiento.
+- Revisión de entregas por docente.
+
+## Subfase 2.4: Seguimiento de cumplimiento docente
+
+Esta subfase agrega el seguimiento académico para docentes sobre las tareas que ya publicaron.
+
+Ahora el docente puede:
+
+- Revisar el avance general de sus tareas publicadas en `/docente/seguimiento`.
+- Consultar alumnos pendientes y completados por tarea en `/docente/tareas/:id/seguimiento`.
+- Ver porcentaje de cumplimiento general, por grupo, por materia y por tarea.
+- Identificar tareas con bajo avance y alumnos con más pendientes.
+- Filtrar tareas por grupo, materia, prioridad, cumplimiento y título.
+- Filtrar entregas por pendientes, completadas, revisadas, sin revisar, alumno o matrícula.
+- Marcar entregas como revisadas.
+- Agregar observaciones a entregas sin implementar calificaciones completas todavía.
+
+Rutas docentes agregadas:
+
+```text
+/docente/seguimiento
+/docente/tareas/:id/seguimiento
+```
+
+Endpoints docentes agregados:
+
+```text
+GET   /api/docente/seguimiento
+GET   /api/docente/tareas/:id/seguimiento
+PATCH /api/docente/entregas/:id/revisar
+```
+
+Credenciales demo:
+
+```text
+Docente:
+docente@itoaxaca.edu.mx
+12345678
+
+Alumno:
+alumno@itoaxaca.edu.mx
+12345678
+```
+
+Queda pendiente para la Subfase 2.5:
+
+- Reportes docentes avanzados.
+- Comparativas por periodo.
+- Exportación de reportes.
+- Métricas globales por grupo y materia.
 
 ## Estructura Recomendada
 
@@ -251,6 +300,9 @@ El docente ya puede acceder al panel base de la Fase 2.1. El administrador solo 
 - `GET /api/docente/tareas/:id`
 - `PUT /api/docente/tareas/:id`
 - `DELETE /api/docente/tareas/:id`
+- `GET /api/docente/seguimiento`
+- `GET /api/docente/tareas/:id/seguimiento`
+- `PATCH /api/docente/entregas/:id/revisar`
 - `GET /api/docente/perfil`
 - `GET /api/configuracion`
 - `PUT /api/configuracion`
@@ -297,10 +349,22 @@ Authorization: Bearer <token>
 28. En MySQL revisa `SELECT * FROM tareas_asignadas;` y `SELECT * FROM entregas_alumno;`.
 29. Cierra sesión, entra como `alumno@itoaxaca.edu.mx` y revisa `Tareas asignadas`.
 30. Confirma que el alumno puede marcar como completada la tarea publicada si está activa.
+31. Login docente con `docente@itoaxaca.edu.mx` y `12345678`.
+32. Entra a `/docente/seguimiento` y valida tareas publicadas, entregas pendientes, completadas y cumplimiento general.
+33. Entra a `/docente/tareas` y usa la acción `Seguimiento`.
+34. Entra a `/docente/tareas/:id/seguimiento`.
+35. Filtra entregas por pendientes, completadas, revisadas y sin revisar.
+36. Marca una entrega como revisada.
+37. Agrega una observación a una entrega.
+38. Confirma en MySQL con `SELECT * FROM entregas_alumno;`.
+39. Login alumno con `alumno@itoaxaca.edu.mx` y `12345678`.
+40. Marca una tarea asignada como completada.
+41. Vuelve al docente y confirma que el cambio se refleja en seguimiento.
+42. Confirma que no se rompieron módulo estudiante, creación de tareas docente, grupos, materias y login por rol.
 
 ## Siguientes Fases
 
-Fase docente 2.4: seguimiento detallado de entregas, filtros avanzados de cumplimiento y reportes docentes.
+Fase docente 2.5: reportes docentes avanzados, comparativas por periodo, exportación y métricas globales.
 
 Fase administrador: administración de usuarios, catálogos, roles, grupos globales, respaldos y reportes institucionales.
 
@@ -320,6 +384,7 @@ Sube manualmente:
 - `.gitignore`
 - `README.md`
 - En backend: `server.js`, `package.json`, `package-lock.json`, `.env.example`, `.gitignore`
+- Nuevos archivos frontend de seguimiento: `src/services/teacherTrackingService.js`, `src/pages/teacher/TeacherTracking.jsx`, `src/pages/teacher/TeacherTaskTracking.jsx`
 
 No subas:
 

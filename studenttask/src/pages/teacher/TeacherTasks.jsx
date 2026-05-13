@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiEdit3, FiEye, FiPlusCircle, FiSearch, FiSlash, FiClipboard, FiUsers } from 'react-icons/fi';
+import { FiActivity, FiEdit3, FiEye, FiPlusCircle, FiSearch, FiSlash, FiClipboard, FiUsers } from 'react-icons/fi';
 import EmptyState from '../../components/EmptyState';
 import FeedbackBanner from '../../components/FeedbackBanner';
 import MainLayout from '../../layout/MainLayout';
@@ -279,6 +279,10 @@ export default function TeacherTasks() {
                         <Link to={`/docente/tareas/${task.id}`} className="secondary-btn text-sm">
                           <FiEye className="text-base" />
                           Ver
+                        </Link>
+                        <Link to={`/docente/tareas/${task.id}/seguimiento`} className="secondary-btn text-sm">
+                          <FiActivity className="text-base" />
+                          Seguimiento
                         </Link>
                         <Link to={`/docente/tareas/${task.id}/editar`} className="secondary-btn text-sm">
                           <FiEdit3 className="text-base" />

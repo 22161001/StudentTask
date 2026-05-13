@@ -64,6 +64,8 @@ const navigationByRole = {
           { to: '/docente/materias', label: 'Materias', Icon: FiBookOpen },
           { to: '/docente/tareas', label: 'Tareas asignadas', Icon: FiClipboard },
           { to: '/docente/tareas/nueva', label: 'Crear tarea', Icon: FiPlusCircle },
+          { to: '/docente/seguimiento', label: 'Seguimiento', Icon: FiActivity },
+          { to: '/docente/reportes', label: 'Reportes', Icon: FiBarChart2 },
         ],
       },
       {

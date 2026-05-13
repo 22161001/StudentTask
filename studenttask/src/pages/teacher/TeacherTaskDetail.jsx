@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiArrowLeft, FiEdit3, FiExternalLink, FiSlash, FiClipboard, FiUsers } from 'react-icons/fi';
+import { FiActivity, FiArrowLeft, FiEdit3, FiExternalLink, FiSlash, FiClipboard, FiUsers } from 'react-icons/fi';
 import EmptyState from '../../components/EmptyState';
 import FeedbackBanner from '../../components/FeedbackBanner';
 import MainLayout from '../../layout/MainLayout';
@@ -82,6 +82,12 @@ export default function TeacherTaskDetail() {
             <FiArrowLeft className="text-base" />
             Volver
           </Link>,
+          task ? (
+            <Link key="seguimiento" to={`/docente/tareas/${task.id}/seguimiento`} className="secondary-btn">
+              <FiActivity className="text-base" />
+              Seguimiento
+            </Link>
+          ) : null,
           task ? (
             <Link key="editar" to={`/docente/tareas/${task.id}/editar`} className="primary-btn">
               <FiEdit3 className="text-base" />
@@ -192,7 +198,7 @@ export default function TeacherTaskDetail() {
             <SectionCard
               eyebrow={`${task.alumnos.length} alumno(s)`}
               title="Alumnos y estado"
-              description="Seguimiento básico de entregas. El seguimiento avanzado queda para la siguiente subfase."
+              description="Consulta rápida de entregas; para filtros y revisión usa el seguimiento de la tarea."
               Icon={FiUsers}
             >
               {task.alumnos.length === 0 ? (
