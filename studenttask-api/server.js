@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'studenttask_clave_secreta';
 const DEFAULT_SUBJECT_COLOR = '#2563eb';
 const validPriorities = new Set(['baja', 'media', 'alta']);
 const validStates = new Set(['pendiente', 'completada']);
+const validAdminUserRoles = new Set(['alumno', 'docente', 'administrador']);
 const validDefaultViews = new Set([
   'dashboard',
   'materias',
@@ -198,6 +199,32 @@ const requireTeacher = async (req, res) => {
   return teacher;
 };
 
+const getAdminByUserId = async (idUsuario) => {
+  const [rows] = await db.query(
+    `SELECT id_usuario, nombre, apellidos, email, rol
+     FROM usuarios
+     WHERE id_usuario = ? AND activo = 1 AND rol = 'administrador'`,
+    [idUsuario],
+  );
+
+  return rows[0] ?? null;
+};
+
+const requireAdmin = async (req, res) => {
+  if (normalizeRoleKey(req.user?.rol) !== 'administrador') {
+    sendError(res, 403, 'No tienes permiso para acceder a esta sección.');
+    return null;
+  }
+
+  const admin = await getAdminByUserId(req.user.id);
+  if (!admin || normalizeRoleKey(admin.rol) !== 'administrador') {
+    sendError(res, 403, 'No tienes permiso para acceder a esta sección.');
+    return null;
+  }
+
+  return admin;
+};
+
 const mapTeacherProfile = (teacher) => ({
   id_usuario: teacher.id_usuario,
   id_docente: teacher.id_docente,
@@ -208,6 +235,170 @@ const mapTeacherProfile = (teacher) => ({
   especialidad: teacher.especialidad,
   rol: teacher.rol,
 });
+
+const mapAdminProfile = (admin) => ({
+  id_usuario: admin.id_usuario,
+  nombre: admin.nombre,
+  apellidos: admin.apellidos,
+  email: admin.email,
+  rol: admin.rol,
+});
+
+const getAdminUserProfileType = (user) => {
+  if (normalizeRoleKey(user.rol) === 'administrador') return 'administrador';
+  if (user.id_alumno) return 'alumno';
+  if (user.id_docente) return 'docente';
+  return 'sin_perfil';
+};
+
+const mapAdminUser = (user) => ({
+  idUsuario: user.id_usuario,
+  nombre: user.nombre,
+  apellidos: user.apellidos,
+  email: user.email,
+  rol: user.rol,
+  activo: Boolean(user.activo),
+  createdAt: user.created_at,
+  updatedAt: user.updated_at,
+  tipoPerfil: user.tipo_perfil ?? getAdminUserProfileType(user),
+});
+
+const mapAdminUserDetail = (user) => ({
+  ...mapAdminUser(user),
+  datosAlumno: user.id_alumno
+    ? {
+        idAlumno: user.id_alumno,
+        matricula: user.matricula,
+        carrera: user.carrera,
+        semestre: user.semestre,
+        grupo: user.grupo,
+      }
+    : null,
+  datosDocente: user.id_docente
+    ? {
+        idDocente: user.id_docente,
+        numeroEmpleado: user.numero_empleado,
+        especialidad: user.especialidad,
+      }
+    : null,
+});
+
+const normalizeAdminUserRole = (value) => {
+  const role = normalizeRoleKey(value);
+  return validAdminUserRoles.has(role) ? role : '';
+};
+
+const validateAdminUserInput = (body = {}, options = {}) => {
+  const errors = {};
+  const nombre = normalizeText(body.nombre);
+  const apellidos = normalizeText(body.apellidos);
+  const email = normalizeEmail(body.email);
+  const password = String(body.password ?? '');
+  const rol = normalizeAdminUserRole(body.rol);
+  const activeInput = parseBooleanField(body.activo);
+
+  if (!nombre) errors.nombre = 'El nombre es obligatorio.';
+  if (!apellidos) errors.apellidos = 'Los apellidos son obligatorios.';
+  if (!email) {
+    errors.email = 'El correo electrónico es obligatorio.';
+  } else if (!isValidEmail(email)) {
+    errors.email = 'Ingresa un correo electrónico válido.';
+  }
+
+  if (options.requirePassword) {
+    if (!password) {
+      errors.password = 'La contraseña es obligatoria.';
+    } else if (password.length < 8) {
+      errors.password = 'La contraseña debe tener al menos 8 caracteres.';
+    }
+  }
+
+  if (!rol) errors.rol = 'Selecciona un rol válido.';
+  if (!activeInput.valid) errors.activo = 'El estado debe ser activo o inactivo.';
+
+  return {
+    errors,
+    user: {
+      nombre,
+      apellidos,
+      email,
+      password,
+      rol,
+      activo: activeInput.provided ? activeInput.value : null,
+    },
+  };
+};
+
+const fetchAdminUserById = async (idUsuario) => {
+  const [rows] = await db.query(
+    `SELECT
+       u.id_usuario,
+       u.nombre,
+       u.apellidos,
+       u.email,
+       u.rol,
+       u.activo,
+       u.created_at,
+       u.updated_at,
+       a.id_alumno,
+       a.matricula,
+       a.carrera,
+       a.semestre,
+       a.grupo,
+       d.id_docente,
+       d.numero_empleado,
+       d.especialidad
+     FROM usuarios u
+     LEFT JOIN alumnos a ON a.id_usuario = u.id_usuario
+     LEFT JOIN docentes d ON d.id_usuario = u.id_usuario
+     WHERE u.id_usuario = ?`,
+    [idUsuario],
+  );
+
+  return rows[0] ?? null;
+};
+
+const countActiveAdmins = async () => {
+  const [rows] = await db.query("SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'administrador' AND activo = 1");
+  return Number(rows[0]?.total ?? 0);
+};
+
+const validateAdminUserSafety = async (currentUser, nextUser, actorId) => {
+  const nextRole = normalizeAdminUserRole(nextUser.rol ?? currentUser.rol);
+  const nextActive = nextUser.activo === null || nextUser.activo === undefined ? Boolean(currentUser.activo) : Boolean(nextUser.activo);
+  const currentRole = normalizeRoleKey(currentUser.rol);
+  const errors = {};
+
+  if (currentUser.id_alumno && nextRole !== 'alumno') {
+    errors.rol = 'No se puede cambiar el rol de una cuenta con perfil de alumno en esta subfase.';
+  }
+
+  if (currentUser.id_docente && nextRole !== 'docente') {
+    errors.rol = 'No se puede cambiar el rol de una cuenta con perfil de docente en esta subfase.';
+  }
+
+  if (Number(currentUser.id_usuario) === Number(actorId) && (!nextActive || nextRole !== 'administrador')) {
+    errors.activo = 'No puedes desactivar tu propia cuenta ni quitarte el rol administrador.';
+  }
+
+  if (currentRole === 'administrador' && Boolean(currentUser.activo) && (!nextActive || nextRole !== 'administrador')) {
+    const activeAdmins = await countActiveAdmins();
+    if (activeAdmins <= 1) {
+      errors.activo = 'Debe existir al menos un administrador activo.';
+    }
+  }
+
+  return errors;
+};
+
+const ensureUniqueAdminUserEmail = async (email, excludedUserId = 0) => {
+  const [rows] = await db.query(
+    'SELECT id_usuario FROM usuarios WHERE email = ? AND id_usuario <> ?',
+    [email, excludedUserId],
+  );
+
+  return rows.length === 0;
+};
 
 const mapTeacherGroup = (group) => ({
   id: group.id_grupo,
@@ -1981,6 +2172,279 @@ app.get(
 );
 
 app.post('/api/auth/logout', authenticate, (req, res) => sendOk(res, 'Sesión cerrada.'));
+
+app.get(
+  '/api/admin/dashboard',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const [rows] = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM usuarios) AS total_usuarios,
+         (SELECT COUNT(*) FROM usuarios WHERE rol = 'alumno') AS total_alumnos,
+         (SELECT COUNT(*) FROM usuarios WHERE rol = 'docente') AS total_docentes,
+         (SELECT COUNT(*) FROM usuarios WHERE rol = 'administrador') AS total_administradores,
+         (SELECT COUNT(*) FROM grupos) AS total_grupos,
+         (SELECT COUNT(*) FROM materias) AS total_materias,
+         (SELECT COUNT(*) FROM usuarios WHERE activo = 1) AS usuarios_activos,
+         (SELECT COUNT(*) FROM usuarios WHERE activo = 0) AS usuarios_inactivos`,
+    );
+
+    const stats = rows[0] ?? {};
+
+    sendOk(res, 'Dashboard administrador cargado correctamente.', {
+      totalUsuarios: Number(stats.total_usuarios ?? 0),
+      totalAlumnos: Number(stats.total_alumnos ?? 0),
+      totalDocentes: Number(stats.total_docentes ?? 0),
+      totalAdministradores: Number(stats.total_administradores ?? 0),
+      totalGrupos: Number(stats.total_grupos ?? 0),
+      totalMaterias: Number(stats.total_materias ?? 0),
+      usuariosActivos: Number(stats.usuarios_activos ?? 0),
+      usuariosInactivos: Number(stats.usuarios_inactivos ?? 0),
+    });
+  }),
+);
+
+app.get(
+  '/api/admin/perfil',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    sendOk(res, 'Perfil administrador cargado correctamente.', { perfil: mapAdminProfile(admin) });
+  }),
+);
+
+app.get(
+  '/api/admin/usuarios',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const conditions = [];
+    const params = [];
+    const search = normalizeText(req.query.search);
+    const roleFilter = normalizeText(req.query.rol);
+    const activeFilter = req.query.activo;
+
+    if (search) {
+      conditions.push('(u.nombre LIKE ? OR u.apellidos LIKE ? OR u.email LIKE ?)');
+      const searchValue = `%${search}%`;
+      params.push(searchValue, searchValue, searchValue);
+    }
+
+    if (roleFilter) {
+      const role = normalizeAdminUserRole(roleFilter);
+      if (!role) {
+        return sendError(res, 400, 'El rol solicitado no es válido.', { rol: 'Rol inválido.' });
+      }
+      conditions.push('u.rol = ?');
+      params.push(role);
+    }
+
+    if (activeFilter !== undefined && activeFilter !== '') {
+      const activeInput = parseBooleanField(activeFilter);
+      if (!activeInput.valid) {
+        return sendError(res, 400, 'El filtro de estado no es válido.', { activo: 'Estado inválido.' });
+      }
+      conditions.push('u.activo = ?');
+      params.push(activeInput.value);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [rows] = await db.query(
+      `SELECT
+         u.id_usuario,
+         u.nombre,
+         u.apellidos,
+         u.email,
+         u.rol,
+         u.activo,
+         u.created_at,
+         u.updated_at,
+         a.id_alumno,
+         d.id_docente,
+         CASE
+           WHEN u.rol = 'administrador' THEN 'administrador'
+           WHEN a.id_alumno IS NOT NULL THEN 'alumno'
+           WHEN d.id_docente IS NOT NULL THEN 'docente'
+           ELSE 'sin_perfil'
+         END AS tipo_perfil
+       FROM usuarios u
+       LEFT JOIN alumnos a ON a.id_usuario = u.id_usuario
+       LEFT JOIN docentes d ON d.id_usuario = u.id_usuario
+       ${whereClause}
+       ORDER BY u.created_at DESC, u.id_usuario DESC`,
+      params,
+    );
+
+    sendOk(res, 'Usuarios cargados correctamente.', rows.map(mapAdminUser));
+  }),
+);
+
+app.post(
+  '/api/admin/usuarios',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const { errors, user } = validateAdminUserInput(req.body, { requirePassword: true });
+    if (Object.keys(errors).length > 0) {
+      return sendError(res, 400, 'Revisa los campos marcados.', errors);
+    }
+
+    const emailAvailable = await ensureUniqueAdminUserEmail(user.email);
+    if (!emailAvailable) {
+      return sendError(res, 400, 'Este correo ya está registrado.', { email: 'Este correo ya está registrado.' });
+    }
+
+    const passwordHash = await bcrypt.hash(user.password, 10);
+    const activeValue = user.activo === null ? 1 : user.activo;
+    const [result] = await db.query(
+      `INSERT INTO usuarios (nombre, apellidos, email, password_hash, rol, activo)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [user.nombre, user.apellidos, user.email, passwordHash, user.rol, activeValue],
+    );
+
+    await db.query('INSERT INTO configuraciones (id_usuario) VALUES (?)', [result.insertId]);
+
+    sendOk(res, 'Usuario creado correctamente.', { idUsuario: result.insertId }, 201);
+  }),
+);
+
+app.get(
+  '/api/admin/usuarios/:id',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, 400, 'El usuario solicitado no es válido.');
+    }
+
+    const user = await fetchAdminUserById(userId);
+    if (!user) {
+      return sendError(res, 404, 'Usuario no encontrado.');
+    }
+
+    sendOk(res, 'Usuario cargado correctamente.', { usuario: mapAdminUserDetail(user) });
+  }),
+);
+
+app.put(
+  '/api/admin/usuarios/:id',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, 400, 'El usuario solicitado no es válido.');
+    }
+
+    const currentUser = await fetchAdminUserById(userId);
+    if (!currentUser) {
+      return sendError(res, 404, 'Usuario no encontrado.');
+    }
+
+    const { errors, user } = validateAdminUserInput(req.body);
+    if (Object.keys(errors).length > 0) {
+      return sendError(res, 400, 'Revisa los campos marcados.', errors);
+    }
+
+    const emailAvailable = await ensureUniqueAdminUserEmail(user.email, userId);
+    if (!emailAvailable) {
+      return sendError(res, 400, 'Este correo ya está registrado.', { email: 'Este correo ya está registrado.' });
+    }
+
+    const safetyErrors = await validateAdminUserSafety(currentUser, user, req.user.id);
+    if (Object.keys(safetyErrors).length > 0) {
+      return sendError(res, 400, 'No se pudo actualizar el usuario.', safetyErrors);
+    }
+
+    const activeValue = user.activo === null ? (currentUser.activo ? 1 : 0) : user.activo;
+    await db.query(
+      `UPDATE usuarios
+       SET nombre = ?,
+           apellidos = ?,
+           email = ?,
+           rol = ?,
+           activo = ?
+       WHERE id_usuario = ?`,
+      [user.nombre, user.apellidos, user.email, user.rol, activeValue, userId],
+    );
+
+    const updatedUser = await fetchAdminUserById(userId);
+    sendOk(res, 'Usuario actualizado correctamente.', { usuario: mapAdminUserDetail(updatedUser) });
+  }),
+);
+
+app.patch(
+  '/api/admin/usuarios/:id/estado',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, 400, 'El usuario solicitado no es válido.');
+    }
+
+    const currentUser = await fetchAdminUserById(userId);
+    if (!currentUser) {
+      return sendError(res, 404, 'Usuario no encontrado.');
+    }
+
+    const activeInput = parseBooleanField(req.body.activo);
+    if (!activeInput.provided || !activeInput.valid) {
+      return sendError(res, 400, 'El estado del usuario es requerido.', { activo: 'Envía activo como verdadero o falso.' });
+    }
+
+    const safetyErrors = await validateAdminUserSafety(currentUser, { rol: currentUser.rol, activo: activeInput.value }, req.user.id);
+    if (Object.keys(safetyErrors).length > 0) {
+      return sendError(res, 400, 'No se pudo actualizar el estado del usuario.', safetyErrors);
+    }
+
+    await db.query('UPDATE usuarios SET activo = ? WHERE id_usuario = ?', [activeInput.value, userId]);
+    sendOk(res, 'Estado del usuario actualizado correctamente.', { idUsuario: userId, activo: Boolean(activeInput.value) });
+  }),
+);
+
+app.delete(
+  '/api/admin/usuarios/:id',
+  authenticate,
+  asyncRoute(async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, 400, 'El usuario solicitado no es válido.');
+    }
+
+    const currentUser = await fetchAdminUserById(userId);
+    if (!currentUser) {
+      return sendError(res, 404, 'Usuario no encontrado.');
+    }
+
+    const safetyErrors = await validateAdminUserSafety(currentUser, { rol: currentUser.rol, activo: 0 }, req.user.id);
+    if (Object.keys(safetyErrors).length > 0) {
+      return sendError(res, 400, 'No se pudo desactivar el usuario.', safetyErrors);
+    }
+
+    await db.query('UPDATE usuarios SET activo = 0 WHERE id_usuario = ?', [userId]);
+    sendOk(res, 'Usuario desactivado correctamente.', { idUsuario: userId, activo: false });
+  }),
+);
 
 app.get(
   '/api/perfil',

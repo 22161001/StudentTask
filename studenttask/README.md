@@ -174,6 +174,102 @@ Queda pendiente para la Subfase 2.5:
 - Exportación de reportes.
 - Métricas globales por grupo y materia.
 
+## Fase 3.1: Base del módulo administrador
+
+Esta subfase agrega la base funcional del rol administrador sin implementar todavía los CRUD administrativos completos.
+
+Ahora el administrador puede:
+
+- Iniciar sesión con rol `administrador`.
+- Acceder a `/admin/dashboard`.
+- Ver un resumen general del sistema con usuarios, alumnos, docentes, administradores, grupos, materias y cuentas activas/inactivas.
+- Acceder a vistas base para usuarios, alumnos, docentes, grupos, materias y asignaciones.
+- Consultar su perfil administrativo en `/admin/perfil`.
+
+Rutas administrativas:
+
+```text
+/admin/dashboard
+/admin/usuarios
+/admin/alumnos
+/admin/docentes
+/admin/grupos
+/admin/materias
+/admin/asignaciones
+/admin/perfil
+```
+
+Endpoints administrativos agregados:
+
+```text
+GET /api/admin/dashboard
+GET /api/admin/perfil
+```
+
+Credencial demo administrador:
+
+```text
+admin@itoaxaca.edu.mx
+12345678
+```
+
+Queda pendiente para la Subfase 3.2:
+
+- CRUD de usuarios.
+- CRUD de alumnos.
+- CRUD de docentes.
+- Gestión de grupos.
+- Gestión de materias.
+- Asignaciones docente-grupo-materia.
+
+## Subfase 3.2: Gestión de usuarios
+
+Esta subfase agrega la administración de cuentas base desde el rol administrador.
+
+Ahora el administrador puede:
+
+- Consultar todos los usuarios registrados.
+- Buscar usuarios por nombre, apellidos o correo.
+- Filtrar usuarios por rol y estado.
+- Crear usuarios base con rol alumno, docente o administrador.
+- Editar nombre, apellidos, correo, rol y estado.
+- Activar y desactivar cuentas mediante baja lógica.
+- Ver detalle de cuenta, fechas y perfil asociado si existe.
+
+Rutas administrativas agregadas o completadas:
+
+```text
+/admin/usuarios
+/admin/usuarios/nuevo
+/admin/usuarios/:id
+/admin/usuarios/:id/editar
+```
+
+Endpoints administrativos agregados:
+
+```text
+GET    /api/admin/usuarios
+POST   /api/admin/usuarios
+GET    /api/admin/usuarios/:id
+PUT    /api/admin/usuarios/:id
+PATCH  /api/admin/usuarios/:id/estado
+DELETE /api/admin/usuarios/:id
+```
+
+Credencial demo administrador:
+
+```text
+admin@itoaxaca.edu.mx
+12345678
+```
+
+Queda pendiente para la Subfase 3.3:
+
+- Gestión completa de alumnos.
+- Gestión completa de docentes.
+- Perfiles académicos relacionados.
+- Vinculación segura de cuentas base con perfiles académicos.
+
 ## Estructura Recomendada
 
 ```text
@@ -267,7 +363,7 @@ admin@itoaxaca.edu.mx
 12345678
 ```
 
-El docente ya puede acceder al panel base de la Fase 2.1. El administrador solo tiene una ruta protegida preparada para fases futuras.
+El alumno, docente y administrador redirigen a su panel correspondiente después del login.
 
 ## API Principal
 
@@ -304,6 +400,14 @@ El docente ya puede acceder al panel base de la Fase 2.1. El administrador solo 
 - `GET /api/docente/tareas/:id/seguimiento`
 - `PATCH /api/docente/entregas/:id/revisar`
 - `GET /api/docente/perfil`
+- `GET /api/admin/dashboard`
+- `GET /api/admin/perfil`
+- `GET /api/admin/usuarios`
+- `POST /api/admin/usuarios`
+- `GET /api/admin/usuarios/:id`
+- `PUT /api/admin/usuarios/:id`
+- `PATCH /api/admin/usuarios/:id/estado`
+- `DELETE /api/admin/usuarios/:id`
 - `GET /api/configuracion`
 - `PUT /api/configuracion`
 
@@ -361,12 +465,24 @@ Authorization: Bearer <token>
 40. Marca una tarea asignada como completada.
 41. Vuelve al docente y confirma que el cambio se refleja en seguimiento.
 42. Confirma que no se rompieron módulo estudiante, creación de tareas docente, grupos, materias y login por rol.
+43. Login administrador con `admin@itoaxaca.edu.mx` y `12345678`; debe abrir `/admin/dashboard`.
+44. Revisa `/admin/dashboard`, `/admin/usuarios`, `/admin/alumnos`, `/admin/docentes`, `/admin/grupos`, `/admin/materias`, `/admin/asignaciones` y `/admin/perfil`; todas deben cargar sin pantalla blanca.
+45. Como alumno o docente, intenta abrir `/admin/dashboard`; debe redirigir a su panel correspondiente.
+46. Como administrador, intenta abrir `/dashboard` o `/docente/dashboard`; debe redirigir a `/admin/dashboard`.
+47. Entra a `/admin/usuarios`; debe mostrar la lista de usuarios.
+48. Filtra usuarios por búsqueda, rol y estado.
+49. Crea un usuario desde `/admin/usuarios/nuevo`.
+50. Confirma en MySQL con `SELECT * FROM usuarios;`.
+51. Abre el detalle del usuario creado desde `/admin/usuarios/:id`.
+52. Edita datos principales desde `/admin/usuarios/:id/editar`.
+53. Activa o desactiva el usuario y confirma que una cuenta inactiva no puede iniciar sesión.
+54. Confirma que alumno y docente no pueden entrar a `/admin/usuarios`.
 
 ## Siguientes Fases
 
 Fase docente 2.5: reportes docentes avanzados, comparativas por periodo, exportación y métricas globales.
 
-Fase administrador: administración de usuarios, catálogos, roles, grupos globales, respaldos y reportes institucionales.
+Fase administrador 3.3: gestión completa de alumnos, docentes y perfiles académicos relacionados.
 
 ## Subir a GitHub
 
@@ -385,6 +501,8 @@ Sube manualmente:
 - `README.md`
 - En backend: `server.js`, `package.json`, `package-lock.json`, `.env.example`, `.gitignore`
 - Nuevos archivos frontend de seguimiento: `src/services/teacherTrackingService.js`, `src/pages/teacher/TeacherTracking.jsx`, `src/pages/teacher/TeacherTaskTracking.jsx`
+- Nuevos archivos frontend administrador: `src/services/adminService.js`, `src/pages/admin/AdminDashboard.jsx`, `src/pages/admin/AdminModulePage.jsx`, `src/pages/admin/AdminProfile.jsx`
+- Nuevos archivos de gestión de usuarios admin: `src/services/adminUserService.js`, `src/pages/admin/AdminUsers.jsx`, `src/pages/admin/AdminUserForm.jsx`, `src/pages/admin/AdminUserDetail.jsx`
 
 No subas:
 

@@ -3,6 +3,7 @@ import {
   FiActivity,
   FiBarChart2,
   FiBookOpen,
+  FiBriefcase,
   FiCalendar,
   FiCheckSquare,
   FiClipboard,
@@ -81,7 +82,19 @@ const navigationByRole = {
     groups: [
       {
         label: 'Administración',
-        items: [{ to: '/admin/dashboard', label: 'Dashboard', Icon: FiShield }],
+        items: [
+          { to: '/admin/dashboard', label: 'Dashboard', Icon: FiShield },
+          { to: '/admin/usuarios', label: 'Usuarios', Icon: FiUsers },
+          { to: '/admin/alumnos', label: 'Alumnos', Icon: FiUser },
+          { to: '/admin/docentes', label: 'Docentes', Icon: FiBriefcase },
+          { to: '/admin/grupos', label: 'Grupos', Icon: FiGrid },
+          { to: '/admin/materias', label: 'Materias', Icon: FiBookOpen },
+          { to: '/admin/asignaciones', label: 'Asignaciones', Icon: FiClipboard },
+        ],
+      },
+      {
+        label: 'Cuenta',
+        items: [{ to: '/admin/perfil', label: 'Perfil', Icon: FiUser }],
       },
     ],
   },
