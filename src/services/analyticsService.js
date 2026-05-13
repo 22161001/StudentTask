@@ -4,6 +4,7 @@ import {
   getStartOfMonth,
   getStartOfWeek,
   getTodayKey,
+  normalizeDateKey,
   parseLocalDate,
   toDateKey,
 } from '../utils/date';
@@ -61,23 +62,7 @@ const percent = (value, total) => {
   return Math.round((value / total) * 100);
 };
 
-const getDateKey = (value) => {
-  if (!value) {
-    return '';
-  }
-
-  const rawValue = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(rawValue)) {
-    return rawValue.slice(0, 10);
-  }
-
-  const date = new Date(rawValue);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return toDateKey(date);
-};
+const getDateKey = (value) => normalizeDateKey(value);
 
 const getSubjectMap = (subjects) => new Map(subjects.map((subject) => [Number(subject.id), subject]));
 

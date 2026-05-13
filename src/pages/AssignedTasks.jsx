@@ -37,6 +37,7 @@ export default function AssignedTasks() {
   const [filters, setFilters] = useState(initialFilters);
   const [noteDrafts, setNoteDrafts] = useState({});
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -50,11 +51,20 @@ export default function AssignedTasks() {
 
       if (tasksResult.ok) {
         setTasks(tasksResult.tasks);
+        if (tasksResult.message) {
+          setFeedback({ type: tasksResult.fallback ? 'info' : 'success', message: tasksResult.message });
+        }
+      } else {
+        setFeedback({ type: 'error', message: tasksResult.message || 'No se pudieron cargar tus tareas asignadas.' });
       }
 
       if (subjectsResult.ok) {
         setSubjects(subjectsResult.subjects);
+      } else {
+        setFeedback({ type: 'error', message: subjectsResult.message || 'No se pudieron cargar las materias.' });
       }
+
+      setLoading(false);
     };
 
     void loadData();
@@ -107,7 +117,7 @@ export default function AssignedTasks() {
 
   const handleToggleStatus = async (task) => {
     const note = noteDrafts[task.id] ?? task.notaPersonal ?? '';
-    const result = await toggleTaskStatus(task.id);
+    const result = await toggleTaskStatus(task);
 
     if (!result.ok) {
       setFeedback(result.message ? { type: 'error', message: result.message } : null);
@@ -171,7 +181,9 @@ export default function AssignedTasks() {
         ]}
       />
 
-      {feedback ? (
+      {loading ? (
+        <FeedbackBanner type="info" message="Cargando tareas asignadas..." className="mb-6" />
+      ) : feedback ? (
         <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 
@@ -272,7 +284,7 @@ export default function AssignedTasks() {
 
               return (
                 <article
-                  key={task.id}
+                  key={`${task.tipo}-${task.id}`}
                   className={`surface-panel interactive-card p-5 ${
                     deadlineMeta.key === 'vencida' ? '!border-rose-100 ring-1 ring-rose-100' : ''
                   }`}

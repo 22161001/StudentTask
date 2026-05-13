@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import MainLayout from '../layout/MainLayout';
 import EmptyState from '../components/EmptyState';
+import FeedbackBanner from '../components/FeedbackBanner';
 import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
@@ -28,6 +29,7 @@ import {
   getDateParts,
   getTodayKey,
   getUpcomingLimitKey,
+  normalizeDateKey,
 } from '../utils/date';
 import {
   getReminderCards,
@@ -49,10 +51,14 @@ const quickLinks = [
   { to: '/seguimiento', label: 'Seguimiento', Icon: FiActivity },
 ];
 
+const getTaskDueKey = (task) => normalizeDateKey(task?.fechaEntrega);
+
 export default function Dashboard() {
   const [session] = useState(getSession());
   const [subjects, setSubjects] = useState(getSubjects());
   const [tasks, setTasks] = useState(getTasks());
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,11 +72,20 @@ export default function Dashboard() {
 
       if (subjectsResult.ok) {
         setSubjects(subjectsResult.subjects);
+      } else {
+        setFeedback({ type: 'error', message: subjectsResult.message || 'No se pudieron cargar las materias.' });
       }
 
       if (tasksResult.ok) {
         setTasks(tasksResult.tasks);
+        if (tasksResult.message) {
+          setFeedback({ type: tasksResult.fallback ? 'info' : 'success', message: tasksResult.message });
+        }
+      } else {
+        setFeedback({ type: 'error', message: tasksResult.message || 'No se pudieron cargar tus tareas.' });
       }
+
+      setLoading(false);
     };
 
     void loadData();
@@ -90,16 +105,21 @@ export default function Dashboard() {
   const assignedTasks = tasks.filter((task) => task.tipo === 'asignada');
   const pendingPersonal = personalTasks.filter((task) => task.estado === 'pendiente');
   const pendingAssigned = assignedTasks.filter((task) => task.estado === 'pendiente');
+  const pendingTasksWithDueDate = pendingTasks.filter((task) => getTaskDueKey(task));
+  const pendingTasksWithoutDueDate = pendingTasks.filter((task) => !getTaskDueKey(task));
 
-  const upcomingTasks = pendingTasks
-    .filter((task) => task.fechaEntrega >= todayKey)
+  const upcomingTasks = pendingTasksWithDueDate
+    .filter((task) => getTaskDueKey(task) >= todayKey)
     .sort((taskA, taskB) => compareByDueDate(taskA, taskB))
     .slice(0, 6);
-  const overdueTasks = pendingTasks
-    .filter((task) => task.fechaEntrega < todayKey)
+  const overdueTasks = pendingTasksWithDueDate
+    .filter((task) => getTaskDueKey(task) < todayKey)
     .sort((taskA, taskB) => compareByDueDate(taskA, taskB))
     .slice(0, 5);
-  const nextDeliveries = pendingTasks.filter((task) => task.fechaEntrega >= todayKey && task.fechaEntrega <= nextWeekKey);
+  const nextDeliveries = pendingTasksWithDueDate.filter((task) => {
+    const dueKey = getTaskDueKey(task);
+    return dueKey >= todayKey && dueKey <= nextWeekKey;
+  });
   const reminderCards = getReminderCards(tasks);
   const reminders = getReminderInsights(tasks);
   const weeklySummary = getWeeklySummary(tasks);
@@ -156,6 +176,12 @@ export default function Dashboard() {
         ) : null}
       </PageHero>
 
+      {loading ? (
+        <FeedbackBanner type="info" message="Cargando datos del dashboard..." className="mb-6" />
+      ) : feedback ? (
+        <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Tareas pendientes"
@@ -195,61 +221,75 @@ export default function Dashboard() {
           Icon={FiCalendar}
         >
           {upcomingTasks.length === 0 ? (
-            <EmptyState
-              title="No tienes entregas pendientes por ahora"
-              description="Crea una nueva actividad para comenzar."
-              action={
-                <Link to="/tareas" className="primary-btn">
-                  Crear tarea
+            <>
+              <EmptyState
+                title="No tienes entregas pendientes por ahora"
+                description="Crea una nueva actividad para comenzar."
+                action={
+                  <Link to="/tareas" className="primary-btn">
+                    Crear tarea
+                  </Link>
+                }
+              />
+              {pendingTasksWithoutDueDate.length > 0 ? (
+                <Link to="/tareas" className="content-card mt-4 block border-amber-100 bg-amber-50/70 px-4 py-4 text-sm font-semibold text-amber-800">
+                  {pendingTasksWithoutDueDate.length} pendiente(s) sin fecha de entrega.
                 </Link>
-              }
-            />
+              ) : null}
+            </>
           ) : (
-            <div className="space-y-4">
-              {upcomingTasks.map((task) => {
-                const dateParts = getDateParts(task.fechaEntrega);
-                const deadlineMeta = getTaskDeadlineMeta(task);
+            <>
+              <div className="space-y-4">
+                {upcomingTasks.map((task) => {
+                  const dateParts = getDateParts(task.fechaEntrega);
+                  const deadlineMeta = getTaskDeadlineMeta(task);
 
-                return (
-                  <article
-                    key={task.id}
-                    className="content-card interactive-card p-5"
-                  >
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          <span className={`rounded-full px-3 py-1.5 font-semibold ${deadlineMeta.className}`}>
-                            {deadlineMeta.label}
-                          </span>
-                          <span className={`rounded-full px-3 py-1.5 font-semibold ${priorityStyles[task.prioridad]}`}>
-                            Prioridad: {formatPriorityLabel(task.prioridad)}
-                          </span>
-                          <span className={`rounded-full px-3 py-1.5 font-semibold ${typeStyles[task.tipo]}`}>
-                            {task.tipo === 'asignada' ? 'Asignada' : 'Personal'}
-                          </span>
+                  return (
+                    <article
+                      key={`${task.tipo}-${task.id}`}
+                      className="content-card interactive-card p-5"
+                    >
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className={`rounded-full px-3 py-1.5 font-semibold ${deadlineMeta.className}`}>
+                              {deadlineMeta.label}
+                            </span>
+                            <span className={`rounded-full px-3 py-1.5 font-semibold ${priorityStyles[task.prioridad]}`}>
+                              Prioridad: {formatPriorityLabel(task.prioridad)}
+                            </span>
+                            <span className={`rounded-full px-3 py-1.5 font-semibold ${typeStyles[task.tipo]}`}>
+                              {task.tipo === 'asignada' ? 'Asignada' : 'Personal'}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-4 text-xl font-bold tracking-tight text-slate-900">{task.titulo}</h3>
+                          <p className="mt-2 text-sm font-medium text-slate-500">{getSubjectName(subjectMap, task)}</p>
+                          <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripción.'}</p>
+                          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
+                            <span>Entrega: {formatShortDate(task.fechaEntrega)}</span>
+                            {task.tipo === 'asignada' ? <span>Docente: {task.docenteNombre || 'Sin docente'}</span> : null}
+                            <Link to={getTaskPath(task)} className="text-blue-700 hover:text-blue-900">
+                              Abrir
+                            </Link>
+                          </div>
                         </div>
 
-                        <h3 className="mt-4 text-xl font-bold tracking-tight text-slate-900">{task.titulo}</h3>
-                        <p className="mt-2 text-sm font-medium text-slate-500">{getSubjectName(subjectMap, task)}</p>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{task.descripcion || task.instrucciones || 'Sin descripción.'}</p>
-                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
-                          <span>Entrega: {formatShortDate(task.fechaEntrega)}</span>
-                          {task.tipo === 'asignada' ? <span>Docente: {task.docenteNombre || 'Sin docente'}</span> : null}
-                          <Link to={getTaskPath(task)} className="text-blue-700 hover:text-blue-900">
-                            Abrir
-                          </Link>
+                        <div className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-white shadow-[0_18px_36px_rgba(15,23,42,0.14)]">
+                          <p className="text-3xl font-black leading-none">{dateParts.day}</p>
+                          <p className="mt-2 text-xs uppercase tracking-[0.28em] text-white/[0.52]">{dateParts.month}</p>
                         </div>
                       </div>
-
-                      <div className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-white shadow-[0_18px_36px_rgba(15,23,42,0.14)]">
-                        <p className="text-3xl font-black leading-none">{dateParts.day}</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.28em] text-white/[0.52]">{dateParts.month}</p>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {pendingTasksWithoutDueDate.length > 0 ? (
+                <Link to="/tareas" className="content-card mt-4 block border-amber-100 bg-amber-50/70 px-4 py-4 text-sm font-semibold text-amber-800">
+                  {pendingTasksWithoutDueDate.length} pendiente(s) sin fecha de entrega.
+                </Link>
+              ) : null}
+            </>
           )}
         </SectionCard>
 
@@ -299,7 +339,7 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {overdueTasks.map((task) => (
                   <Link
-                    key={task.id}
+                    key={`${task.tipo}-${task.id}`}
                     to={getTaskPath(task)}
                     className="block rounded-[22px] border border-rose-100 bg-rose-50/70 px-4 py-4 shadow-[0_12px_28px_rgba(244,63,94,0.06)] transition hover:-translate-y-0.5"
                   >

@@ -10,6 +10,8 @@ import {
   getTomorrowKey,
   getUpcomingLimitKey,
   isTaskOverdue,
+  isTaskToday,
+  normalizeDateKey,
   toDateKey,
 } from './date';
 
@@ -40,26 +42,32 @@ const deadlineStyles = {
   manana: 'bg-sky-50 text-sky-700',
   proxima: 'bg-slate-100 text-slate-600',
   completada: 'bg-emerald-50 text-emerald-700',
+  sinFecha: 'bg-amber-50 text-amber-700',
 };
 
 const getTaskPath = (task) => (task.tipo === 'asignada' ? '/tareas-asignadas' : '/tareas');
 
-const getSubjectName = (subjectsById, task) => subjectsById.get(task.materiaId)?.nombre ?? 'Sin materia';
+const getSubjectName = (subjectsById, task) => subjectsById.get(task.materiaId)?.nombre ?? task.materiaNombre ?? 'Sin materia';
 
 const getTaskDeadlineMeta = (task) => {
   if (task.estado === 'completada') {
     return { key: 'completada', label: 'Completada', className: deadlineStyles.completada };
   }
 
+  const dueKey = normalizeDateKey(task.fechaEntrega);
+  if (!dueKey) {
+    return { key: 'sin_fecha', label: 'Sin fecha', className: deadlineStyles.sinFecha };
+  }
+
   if (isTaskOverdue(task.fechaEntrega, task.estado)) {
     return { key: 'vencida', label: 'Vencida', className: deadlineStyles.vencida };
   }
 
-  if (task.fechaEntrega === getTodayKey()) {
+  if (isTaskToday(task.fechaEntrega)) {
     return { key: 'hoy', label: 'Entrega hoy', className: deadlineStyles.hoy };
   }
 
-  if (task.fechaEntrega === getTomorrowKey()) {
+  if (dueKey === getTomorrowKey()) {
     return { key: 'manana', label: 'Entrega mañana', className: deadlineStyles.manana };
   }
 
@@ -73,11 +81,14 @@ const getReminderInsights = (tasks, days = 7) => {
   const pendingTasks = tasks.filter((task) => task.estado === 'pendiente');
 
   return {
-    dueToday: pendingTasks.filter((task) => task.fechaEntrega === todayKey).sort(compareByDueDate),
-    dueTomorrow: pendingTasks.filter((task) => task.fechaEntrega === tomorrowKey).sort(compareByDueDate),
-    overdue: pendingTasks.filter((task) => task.fechaEntrega < todayKey).sort(compareByDueDate),
+    dueToday: pendingTasks.filter((task) => isTaskToday(task.fechaEntrega)).sort(compareByDueDate),
+    dueTomorrow: pendingTasks.filter((task) => normalizeDateKey(task.fechaEntrega) === tomorrowKey).sort(compareByDueDate),
+    overdue: pendingTasks.filter((task) => isTaskOverdue(task.fechaEntrega, task.estado)).sort(compareByDueDate),
     highPriorityUpcoming: pendingTasks
-      .filter((task) => task.prioridad === 'alta' && task.fechaEntrega >= todayKey && task.fechaEntrega <= upcomingLimitKey)
+      .filter((task) => {
+        const dueKey = normalizeDateKey(task.fechaEntrega);
+        return task.prioridad === 'alta' && dueKey >= todayKey && dueKey <= upcomingLimitKey;
+      })
       .sort(compareByDueDate),
     assignedUnreviewed: pendingTasks
       .filter((task) => task.tipo === 'asignada' && !String(task.notaPersonal ?? '').trim())
@@ -123,11 +134,14 @@ const getReminderCards = (tasks) => {
 const getWeeklySummary = (tasks) => {
   const todayKey = getTodayKey();
   const nextWeekKey = getUpcomingLimitKey(6);
-  const pendingTasks = tasks.filter((task) => task.estado === 'pendiente' && task.fechaEntrega >= todayKey && task.fechaEntrega <= nextWeekKey);
+  const pendingTasks = tasks.filter((task) => {
+    const dueKey = normalizeDateKey(task.fechaEntrega);
+    return task.estado === 'pendiente' && dueKey >= todayKey && dueKey <= nextWeekKey;
+  });
 
   return Array.from({ length: 7 }, (_, index) => {
     const key = toDateKey(addDays(todayKey, index));
-    const tasksForDay = pendingTasks.filter((task) => task.fechaEntrega === key);
+    const tasksForDay = pendingTasks.filter((task) => normalizeDateKey(task.fechaEntrega) === key);
 
     return {
       key,

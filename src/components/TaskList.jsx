@@ -33,7 +33,7 @@ export default function TaskList({ tasks, subjectsById, onEdit, onDelete, onTogg
 
         return (
           <article
-            key={task.id}
+            key={`${task.tipo}-${task.id}`}
             className={`content-card interactive-card p-5 ${
               deadlineMeta.key === 'vencida' ? '!border-rose-100 ring-1 ring-rose-100' : ''
             }`}

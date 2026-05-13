@@ -87,7 +87,12 @@ const syncSubjects = async () => {
     return { ok: true, subjects };
   } catch (error) {
     if (isApiFallbackError(error)) {
-      return { ok: true, subjects: getSubjects() };
+      return {
+        ok: true,
+        subjects: getSubjects(),
+        message: 'No se pudieron cargar las materias desde el servidor. Se muestran datos locales de respaldo.',
+        fallback: true,
+      };
     }
 
     return {

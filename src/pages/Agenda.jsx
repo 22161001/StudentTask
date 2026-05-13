@@ -20,6 +20,7 @@ import {
   getTodayKey,
   getWeekDays,
   moveDateByPeriod,
+  normalizeDateKey,
 } from '../utils/date';
 import {
   getReminderInsights,
@@ -46,7 +47,11 @@ const viewModes = [
 
 const groupTasksByDate = (tasks) =>
   tasks.reduce((groups, task) => {
-    const dateKey = task.fechaEntrega;
+    const dateKey = normalizeDateKey(task.fechaEntrega);
+    if (!dateKey) {
+      return groups;
+    }
+
     if (!groups.has(dateKey)) {
       groups.set(dateKey, []);
     }
@@ -163,7 +168,7 @@ export default function Agenda() {
 
   const tasksByDate = useMemo(() => groupTasksByDate(filteredTasks), [filteredTasks]);
   const visibleDateKeys = new Set(visibleDays.map((day) => day.key));
-  const periodTasks = filteredTasks.filter((task) => visibleDateKeys.has(task.fechaEntrega));
+  const periodTasks = filteredTasks.filter((task) => visibleDateKeys.has(normalizeDateKey(task.fechaEntrega)));
   const reminders = getReminderInsights(filteredTasks);
 
   const handleFilterChange = (event) => {
@@ -306,7 +311,7 @@ export default function Agenda() {
               ) : (
                 <div className="space-y-4">
                   {(tasksByDate.get(selectedDate) ?? []).map((task) => (
-                    <AgendaTaskCard key={task.id} task={task} subjectsById={subjectMap} />
+                    <AgendaTaskCard key={`${task.tipo}-${task.id}`} task={task} subjectsById={subjectMap} />
                   ))}
                 </div>
               )}
@@ -340,7 +345,7 @@ export default function Agenda() {
                         const deadlineMeta = getTaskDeadlineMeta(task);
                         return (
                           <div
-                            key={task.id}
+                            key={`${task.tipo}-${task.id}`}
                             className={`rounded-[14px] border px-3 py-2 text-xs font-semibold ${
                               deadlineMeta.key === 'vencida'
                                 ? 'border-rose-100 bg-rose-50 text-rose-700'
@@ -376,7 +381,7 @@ export default function Agenda() {
             ) : (
               <div className="space-y-3">
                 {(tasksByDate.get(selectedDate) ?? []).map((task) => (
-                  <AgendaTaskCard key={task.id} task={task} subjectsById={subjectMap} compact />
+                  <AgendaTaskCard key={`${task.tipo}-${task.id}`} task={task} subjectsById={subjectMap} compact />
                 ))}
               </div>
             )}
@@ -416,7 +421,7 @@ export default function Agenda() {
           >
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {periodTasks.map((task) => (
-                <AgendaTaskCard key={task.id} task={task} subjectsById={subjectMap} compact />
+                <AgendaTaskCard key={`${task.tipo}-${task.id}`} task={task} subjectsById={subjectMap} compact />
               ))}
             </div>
           </SectionCard>

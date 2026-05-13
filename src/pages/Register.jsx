@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheckCircle, FiUserPlus } from 'react-icons/fi';
-import logo from '../assets/studenttask-logo.png';
+import logo from '../assets/studenttask-logo.jpeg';
 import { getDefaultPrivateRoute } from '../services/settingsService';
 import { isAuthenticated, loginUser, registerUser } from '../services/authService';
 
@@ -49,12 +49,12 @@ export default function Register() {
     setFeedback(null);
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
     setSubmitting(true);
     setFeedback(null);
 
-    const result = await registerUser(form);
+    const result = registerUser(form);
 
     if (!result.ok) {
       setErrors(result.errors ?? {});

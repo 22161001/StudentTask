@@ -1,9 +1,11 @@
 import { DEMO_PROFILE, DEMO_SETTINGS, validDefaultViews } from './storageService';
+import { getTodayKey, normalizeDateKey } from '../utils/date';
 
 const pickFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null);
 
 const normalizeText = (value, fallback = '') => String(value ?? fallback).trim();
 const normalizeEmail = (value, fallback = '') => normalizeText(value, fallback).toLowerCase();
+const normalizeApiDate = (value, fallback = '') => normalizeDateKey(value) || normalizeDateKey(fallback);
 
 const unwrapApiData = (payload) => {
   if (payload && typeof payload === 'object' && 'data' in payload) {
@@ -114,6 +116,8 @@ const normalizeProfilePayload = (payload, fallback = DEMO_PROFILE) => {
 
   return {
     id: Number(pickFirstDefined(userRecord.id, userRecord.id_usuario, fallback.id)) || fallback.id,
+    idUsuario: Number(pickFirstDefined(userRecord.idUsuario, userRecord.id_usuario, userRecord.id, fallback.id)) || fallback.id,
+    idAlumno: Number(pickFirstDefined(studentRecord.idAlumno, studentRecord.id_alumno, userRecord.idAlumno, userRecord.id_alumno, 0)) || 0,
     nombre: normalizeText(pickFirstDefined(userRecord.nombre, studentRecord.nombre, fallback.nombre), fallback.nombre) || fallback.nombre,
     apellidos:
       normalizeText(pickFirstDefined(userRecord.apellidos, studentRecord.apellidos, fallback.apellidos), fallback.apellidos) || fallback.apellidos,
@@ -145,7 +149,8 @@ const normalizeSettingsPayload = (payload, fallback = DEMO_SETTINGS) => {
 };
 
 const normalizeSubjectPayload = (payload, index = 0) => {
-  const data = unwrapApiData(payload) ?? {};
+  const source = unwrapApiData(payload) ?? {};
+  const data = source.materia ?? source.subject ?? source;
 
   return {
     id: Number(pickFirstDefined(data.id, data.id_materia, index + 1)) || index + 1,
@@ -171,19 +176,34 @@ const normalizeSubjectsPayload = (payload) => {
 };
 
 const normalizeTaskPayload = (payload, index = 0) => {
-  const data = unwrapApiData(payload) ?? {};
-  const createdAt = data.createdAt ?? data.created_at ?? new Date().toISOString();
+  const source = unwrapApiData(payload) ?? {};
+  const data = source.tarea ?? source.task ?? source;
+  const createdAt = normalizeApiDate(pickFirstDefined(data.createdAt, data.created_at), getTodayKey()) || getTodayKey();
+  const updatedAt = normalizeApiDate(pickFirstDefined(data.updatedAt, data.updated_at), createdAt) || createdAt;
   const taskType = normalizeTaskType(data.tipo ?? data.type);
   const state = normalizeTaskState(data.estado ?? data.state);
-  const completedDate = normalizeText(data.fechaCompletada ?? data.fecha_completada ?? data.completedAt ?? data.completed_at);
+  const publishedDate =
+    normalizeApiDate(
+      pickFirstDefined(data.fechaPublicacion, data.fecha_publicacion, data.publishedAt, data.published_at, data.createdAt, data.created_at),
+      createdAt,
+    ) || createdAt;
+  const dueDate = normalizeApiDate(pickFirstDefined(data.fechaEntrega, data.fecha_entrega, data.fecha_limite, data.dueDate, data.due_date));
+  const completedDate = normalizeApiDate(
+    pickFirstDefined(data.fechaCompletada, data.fecha_completada, data.completedAt, data.completed_at),
+  );
 
   return {
-    id: Number(pickFirstDefined(data.id, data.id_tarea, index + 1)) || index + 1,
+    id: Number(pickFirstDefined(data.id, data.id_tarea, data.id_tarea_personal, data.id_tarea_asignada, index + 1)) || index + 1,
+    entregaId: Number(pickFirstDefined(data.entregaId, data.id_entrega, 0)) || null,
+    idUsuario: Number(pickFirstDefined(data.idUsuario, data.id_usuario, 0)) || 0,
+    idAlumno: Number(pickFirstDefined(data.idAlumno, data.id_alumno, 0)) || 0,
     titulo: normalizeText(data.titulo),
     descripcion: normalizeText(data.descripcion),
     materiaId: Number(pickFirstDefined(data.materiaId, data.id_materia, 0)) || 0,
-    fechaPublicacion: normalizeText(data.fechaPublicacion ?? data.fecha_publicacion ?? data.publishedAt ?? data.published_at) || createdAt.split('T')[0],
-    fechaEntrega: normalizeText(data.fechaEntrega ?? data.fecha_entrega),
+    materiaNombre: normalizeText(data.materiaNombre ?? data.materia_nombre),
+    materiaColor: normalizeText(data.materiaColor ?? data.materia_color),
+    fechaPublicacion: publishedDate,
+    fechaEntrega: dueDate,
     prioridad: normalizeTaskPriority(data.prioridad),
     estado: state,
     tipo: taskType,
@@ -195,9 +215,9 @@ const normalizeTaskPayload = (payload, index = 0) => {
     tiempoEstimadoHoras: Number(data.tiempoEstimadoHoras ?? data.tiempo_estimado_horas ?? data.estimatedHours ?? data.estimated_hours) || 0,
     recordatorio: toBoolean(data.recordatorio),
     notaPersonal: normalizeText(data.notaPersonal ?? data.nota_personal ?? data.personalNote ?? data.personal_note),
-    fechaCompletada: state === 'completada' ? completedDate || (data.updatedAt ?? data.updated_at ?? createdAt).split('T')[0] : null,
+    fechaCompletada: state === 'completada' ? completedDate || updatedAt : null,
     createdAt,
-    updatedAt: data.updatedAt ?? data.updated_at ?? createdAt,
+    updatedAt,
   };
 };
 
@@ -220,8 +240,8 @@ const serializeTaskPayload = (task) => ({
   titulo: normalizeText(task.titulo),
   descripcion: normalizeText(task.descripcion),
   id_materia: Number(task.materiaId),
-  fecha_publicacion: normalizeText(task.fechaPublicacion),
-  fecha_entrega: normalizeText(task.fechaEntrega),
+  fecha_publicacion: normalizeApiDate(task.fechaPublicacion),
+  fecha_entrega: normalizeApiDate(task.fechaEntrega),
   prioridad: encodeTaskPriority(task.prioridad),
   estado: encodeTaskState(task.estado),
   tipo: normalizeTaskType(task.tipo),
@@ -233,7 +253,7 @@ const serializeTaskPayload = (task) => ({
   tiempo_estimado_horas: Number(task.tiempoEstimadoHoras) || 0,
   recordatorio: Boolean(task.recordatorio),
   nota_personal: normalizeText(task.notaPersonal),
-  fecha_completada: normalizeText(task.fechaCompletada),
+  fecha_completada: normalizeApiDate(task.fechaCompletada),
 });
 
 const serializeSettingsPayload = (settings) => ({
@@ -253,6 +273,7 @@ const normalizeApiErrors = (payload) => {
 
   const keyMap = {
     fecha_entrega: 'fechaEntrega',
+    fecha_limite: 'fechaEntrega',
     id_materia: 'materiaId',
     vista_default: 'vistaDefault',
     recordatorios_activos: 'recordatoriosActivos',

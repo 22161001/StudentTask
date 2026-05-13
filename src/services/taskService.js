@@ -25,6 +25,14 @@ const TASK_ORIGIN_OPTIONS = ['estudiante', 'docente'];
 const getTasks = () => readStorage(STORAGE_KEYS.tasks, []);
 const getPersonalTasks = () => getTasks().filter((task) => task.tipo === 'personal');
 const getAssignedTasks = () => getTasks().filter((task) => task.tipo === 'asignada');
+const getTaskId = (taskOrId) => Number(typeof taskOrId === 'object' ? taskOrId?.id : taskOrId);
+const getTaskType = (taskOrId) => (typeof taskOrId === 'object' ? taskOrId?.tipo : undefined);
+const findTaskByIdentity = (tasks, taskOrId) => {
+  const taskId = getTaskId(taskOrId);
+  const taskType = getTaskType(taskOrId);
+
+  return tasks.find((task) => task.id === taskId && (!taskType || task.tipo === taskType)) ?? null;
+};
 
 const persistTasks = (tasks) => {
   writeStorage(STORAGE_KEYS.tasks, tasks);
@@ -173,7 +181,7 @@ const updateTaskLocal = (taskId, data) => {
 
 const updateAssignedTaskProgressLocal = (taskId, changes) => {
   const tasks = getTasks();
-  const currentTask = tasks.find((task) => task.id === taskId);
+  const currentTask = tasks.find((task) => task.id === getTaskId(taskId) && task.tipo === 'asignada');
 
   if (!currentTask) {
     return { ok: false, message: 'La tarea asignada que intentas actualizar ya no existe.' };
@@ -196,20 +204,20 @@ const updateAssignedTaskProgressLocal = (taskId, changes) => {
     updatedAt: new Date().toISOString(),
   };
 
-  const nextTasks = persistTasks(tasks.map((task) => (task.id === taskId ? updatedTask : task)));
+  const nextTasks = persistTasks(tasks.map((task) => (task.id === getTaskId(taskId) && task.tipo === 'asignada' ? updatedTask : task)));
   return { ok: true, task: updatedTask, tasks: nextTasks };
 };
 
-const updateTaskProgressLocal = (taskId, changes) => {
+const updateTaskProgressLocal = (taskOrId, changes) => {
   const tasks = getTasks();
-  const currentTask = tasks.find((task) => task.id === taskId);
+  const currentTask = findTaskByIdentity(tasks, taskOrId);
 
   if (!currentTask) {
     return { ok: false, message: 'La tarea que intentas actualizar ya no existe.' };
   }
 
   if (currentTask.tipo === 'asignada') {
-    return updateAssignedTaskProgressLocal(taskId, changes);
+    return updateAssignedTaskProgressLocal(currentTask, changes);
   }
 
   const nextState = String(changes.estado ?? currentTask.estado).trim().toLowerCase();
@@ -225,7 +233,7 @@ const updateTaskProgressLocal = (taskId, changes) => {
     updatedAt: new Date().toISOString(),
   };
 
-  const nextTasks = persistTasks(tasks.map((task) => (task.id === taskId ? updatedTask : task)));
+  const nextTasks = persistTasks(tasks.map((task) => (task.id === currentTask.id && task.tipo === currentTask.tipo ? updatedTask : task)));
   return { ok: true, task: updatedTask, tasks: nextTasks };
 };
 
@@ -242,22 +250,58 @@ const deleteTaskLocal = (taskId) => {
 };
 
 const syncTasks = async () => {
-  try {
-    const { data } = await request('/tareas');
-    const tasks = persistTasks(normalizeTasksPayload(data));
-    return { ok: true, tasks };
-  } catch (error) {
-    if (isApiFallbackError(error)) {
-      return { ok: true, tasks: getTasks() };
-    }
+  const localTasks = getTasks();
+  const localPersonalTasks = localTasks.filter((task) => task.tipo !== 'asignada');
+  const localAssignedTasks = localTasks.filter((task) => task.tipo === 'asignada');
+  const errors = [];
 
+  const personalResult = await request('/tareas')
+    .then(({ data }) => ({
+      ok: true,
+      tasks: normalizeTasksPayload(data).map((task) => ({ ...task, tipo: 'personal', origen: task.origen || 'estudiante' })),
+    }))
+    .catch((error) => {
+      errors.push(error);
+      return { ok: false, tasks: localPersonalTasks, error };
+    });
+
+  const assignedResult = await request('/tareas-asignadas')
+    .then(({ data }) => ({
+      ok: true,
+      tasks: normalizeTasksPayload(data).map((task) => ({ ...task, tipo: 'asignada', origen: 'docente' })),
+    }))
+    .catch((error) => {
+      errors.push(error);
+      return { ok: false, tasks: localAssignedTasks, error };
+    });
+
+  const tasks = persistTasks([...personalResult.tasks, ...assignedResult.tasks]);
+
+  if (personalResult.ok || assignedResult.ok) {
     return {
-      ok: false,
-      message: extractApiMessage(error.payload, 'No se pudieron cargar las tareas.'),
-      errors: normalizeApiErrors(error.payload),
-      tasks: getTasks(),
+      ok: true,
+      tasks,
+      message: errors.length > 0 ? 'Se muestran datos locales de respaldo para algunos módulos.' : '',
+      fallback: errors.length > 0,
     };
   }
+
+  const firstError = errors[0];
+  if (errors.every((error) => isApiFallbackError(error))) {
+    return {
+      ok: true,
+      tasks,
+      message: 'No se pudo conectar con el servidor. Se muestran datos locales de respaldo.',
+      fallback: true,
+    };
+  }
+
+  return {
+    ok: false,
+    message: extractApiMessage(firstError?.payload, 'No se pudieron cargar tus tareas.'),
+    errors: normalizeApiErrors(firstError?.payload),
+    tasks,
+  };
 };
 
 const createTask = async (data) => {
@@ -335,13 +379,15 @@ const updateTask = async (taskId, data) => {
 };
 
 const updateAssignedTaskProgress = async (taskId, changes) => {
+  const assignedTaskId = getTaskId(taskId);
+
   try {
-    await request(`/tareas/${taskId}/progreso`, {
+    await request(`/tareas-asignadas/${assignedTaskId}/progreso`, {
       method: 'PATCH',
       body: {
         estado: changes.estado,
         nota_personal: changes.notaPersonal,
-        fecha_completada: changes.fechaCompletada,
+        fecha_entrega: changes.fechaCompletada,
       },
     });
 
@@ -349,7 +395,7 @@ const updateAssignedTaskProgress = async (taskId, changes) => {
     const tasks = syncResult.tasks ?? getTasks();
     return {
       ok: true,
-      task: tasks.find((task) => task.id === taskId) ?? null,
+      task: tasks.find((task) => task.id === assignedTaskId && task.tipo === 'asignada') ?? null,
       tasks,
     };
   } catch (error) {
@@ -365,12 +411,14 @@ const updateAssignedTaskProgress = async (taskId, changes) => {
   }
 };
 
-const updateTaskProgress = async (taskId, changes) => {
-  const currentTask = getTasks().find((task) => task.id === taskId);
+const updateTaskProgress = async (taskOrId, changes) => {
+  const currentTask = findTaskByIdentity(getTasks(), taskOrId);
 
   if (currentTask?.tipo === 'asignada') {
-    return updateAssignedTaskProgress(taskId, changes);
+    return updateAssignedTaskProgress(currentTask, changes);
   }
+
+  const taskId = getTaskId(taskOrId);
 
   try {
     await request(`/tareas/${taskId}/progreso`, {
@@ -426,16 +474,16 @@ const deleteTask = async (taskId) => {
   }
 };
 
-const toggleTaskStatus = async (taskId) => {
+const toggleTaskStatus = async (taskOrId) => {
   const tasks = getTasks();
-  const currentTask = tasks.find((task) => task.id === taskId);
+  const currentTask = findTaskByIdentity(tasks, taskOrId);
 
   if (!currentTask) {
     return { ok: false, message: 'La tarea que intentas actualizar ya no existe.' };
   }
 
   const nextState = currentTask.estado === 'completada' ? 'pendiente' : 'completada';
-  return updateTaskProgress(taskId, {
+  return updateTaskProgress(currentTask, {
     estado: nextState,
     notaPersonal: currentTask.notaPersonal,
   });

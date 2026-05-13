@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import logo from '../assets/studenttask-logo.png';
+import logo from '../assets/studenttask-logo.jpeg';
 import { getDefaultPrivateRoute } from '../services/settingsService';
 import { isAuthenticated, loginUser, loginWithProvider } from '../services/authService';
 

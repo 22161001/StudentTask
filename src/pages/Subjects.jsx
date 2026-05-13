@@ -8,6 +8,7 @@ import SubjectForm from '../components/SubjectForm';
 import SubjectList from '../components/SubjectList';
 import { createSubject, deleteSubject, getSubjects, syncSubjects, updateSubject } from '../services/subjectService';
 import { getTasks, syncTasks } from '../services/taskService';
+import { compareByDueDate, normalizeDateKey } from '../utils/date';
 
 const initialForm = {
   nombre: '',
@@ -22,6 +23,7 @@ export default function Subjects() {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,11 +37,20 @@ export default function Subjects() {
 
       if (subjectsResult.ok) {
         setSubjects(subjectsResult.subjects);
+        if (subjectsResult.message) {
+          setFeedback({ type: subjectsResult.fallback ? 'info' : 'success', message: subjectsResult.message });
+        }
+      } else {
+        setFeedback({ type: 'error', message: subjectsResult.message || 'No se pudieron cargar las materias.' });
       }
 
       if (tasksResult.ok) {
         setTasks(tasksResult.tasks);
+      } else {
+        setFeedback({ type: 'error', message: tasksResult.message || 'No se pudieron cargar tus tareas.' });
       }
+
+      setLoading(false);
     };
 
     void loadData();
@@ -63,7 +74,7 @@ export default function Subjects() {
             totalTasks: subjectTasks.length,
             pendingTasks: pendingTasks.length,
             completedTasks: completedTasks.length,
-            nextDue: pendingTasks.sort((taskA, taskB) => taskA.fechaEntrega.localeCompare(taskB.fechaEntrega))[0]?.fechaEntrega ?? null,
+            nextDue: [...pendingTasks].sort(compareByDueDate).map((task) => normalizeDateKey(task.fechaEntrega)).find(Boolean) ?? null,
             completionRate,
           };
         })
@@ -160,7 +171,9 @@ export default function Subjects() {
         ]}
       />
 
-      {feedback ? (
+      {loading ? (
+        <FeedbackBanner type="info" message="Cargando materias..." className="mb-6" />
+      ) : feedback ? (
         <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 

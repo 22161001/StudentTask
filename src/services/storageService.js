@@ -1,3 +1,5 @@
+import { normalizeDateKey } from '../utils/date';
+
 const STORAGE_KEYS = {
   authToken: 'studenttask_token',
   session: 'studenttask_session',
@@ -473,19 +475,23 @@ const normalizeSubjects = (subjects) => {
 };
 
 const normalizeTask = (task, index = 0) => {
-  const createdAt = task?.createdAt ?? task?.created_at ?? getIsoNow();
+  const createdAt = normalizeDateKey(task?.createdAt ?? task?.created_at) || normalizeDateKey(getIsoNow());
+  const updatedAt = normalizeDateKey(task?.updatedAt ?? task?.updated_at) || createdAt;
   const taskType = mapTaskType(task?.tipo ?? task?.type);
   const state = mapTaskState(task?.estado ?? task?.state);
-  const fechaCompletada = normalizeText(task?.fechaCompletada ?? task?.fecha_completada ?? task?.completedAt);
+  const fechaCompletada = normalizeDateKey(task?.fechaCompletada ?? task?.fecha_completada ?? task?.completedAt ?? task?.completed_at);
 
   return {
-    id: Number(task?.id ?? task?.id_tarea) || index + 1,
+    id: Number(task?.id ?? task?.id_tarea ?? task?.id_tarea_personal ?? task?.id_tarea_asignada) || index + 1,
     titulo: normalizeText(task?.titulo ?? task?.title),
     descripcion: normalizeText(task?.descripcion ?? task?.description),
     materiaId: Number(task?.materiaId ?? task?.id_materia) || 0,
     fechaPublicacion:
-      normalizeText(task?.fechaPublicacion ?? task?.fecha_publicacion ?? task?.publishedAt) || String(createdAt).split('T')[0] || createDateInDays(0),
-    fechaEntrega: normalizeText(task?.fechaEntrega ?? task?.fecha_entrega ?? task?.dueDate) || createDateInDays(index + 1),
+      normalizeDateKey(task?.fechaPublicacion ?? task?.fecha_publicacion ?? task?.publishedAt ?? task?.published_at ?? task?.createdAt ?? task?.created_at) ||
+      createdAt ||
+      createDateInDays(0),
+    fechaEntrega:
+      normalizeDateKey(task?.fechaEntrega ?? task?.fecha_entrega ?? task?.fecha_limite ?? task?.dueDate ?? task?.due_date) || createDateInDays(index + 1),
     prioridad: mapTaskPriority(task?.prioridad ?? task?.priority),
     estado: state,
     tipo: taskType,
@@ -497,9 +503,9 @@ const normalizeTask = (task, index = 0) => {
     tiempoEstimadoHoras: normalizePositiveNumber(task?.tiempoEstimadoHoras ?? task?.tiempo_estimado_horas ?? task?.estimatedHours),
     recordatorio: normalizeBoolean(task?.recordatorio ?? task?.reminder, false),
     notaPersonal: normalizeText(task?.notaPersonal ?? task?.nota_personal ?? task?.personalNote),
-    fechaCompletada: state === 'completada' ? fechaCompletada || String(task?.updatedAt ?? task?.updated_at ?? createdAt).split('T')[0] : null,
+    fechaCompletada: state === 'completada' ? fechaCompletada || updatedAt : null,
     createdAt,
-    updatedAt: task?.updatedAt ?? task?.updated_at ?? createdAt,
+    updatedAt,
   };
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FiMonitor, FiRefreshCw, FiSave, FiSettings, FiSliders } from 'react-icons/fi';
+import FeedbackBanner from '../components/FeedbackBanner';
 import MainLayout from '../layout/MainLayout';
 import PageHero from '../components/PageHero';
 import SectionCard from '../components/SectionCard';
@@ -21,15 +22,28 @@ const viewOptions = [
 export default function Settings() {
   const [settings, setSettings] = useState(getSettings());
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
 
     const loadSettings = async () => {
       const result = await syncSettings();
-      if (isMounted && result.ok) {
-        setSettings(result.settings);
+      if (!isMounted) {
+        return;
       }
+
+      if (result.ok) {
+        setSettings(result.settings);
+        if (result.message) {
+          setFeedback({ type: result.fallback ? 'info' : 'success', message: result.message });
+        }
+      } else {
+        setFeedback({ type: 'error', message: result.message || 'No se pudo cargar la configuración.' });
+      }
+
+      setLoading(false);
     };
 
     void loadSettings();
@@ -46,6 +60,7 @@ export default function Settings() {
       [name]: type === 'checkbox' ? checked : value,
     }));
     setSaved(false);
+    setFeedback(null);
   };
 
   const handleSubmit = async (event) => {
@@ -54,6 +69,9 @@ export default function Settings() {
     if (result.ok) {
       setSettings(result.settings);
       setSaved(true);
+      setFeedback({ type: result.fallback ? 'info' : 'success', message: result.message || 'Configuración actualizada.' });
+    } else {
+      setFeedback({ type: 'error', message: result.message || 'No se pudo guardar la configuración.' });
     }
   };
 
@@ -83,6 +101,12 @@ export default function Settings() {
           },
         ]}
       />
+
+      {loading ? (
+        <FeedbackBanner type="info" message="Cargando configuración..." className="mb-6" />
+      ) : feedback ? (
+        <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <SectionCard

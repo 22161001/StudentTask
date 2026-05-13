@@ -12,7 +12,7 @@ import {
   FiUser,
   FiX,
 } from 'react-icons/fi';
-import logo from '../assets/LogoApp.png';
+import logo from '../assets/studenttask-logo.jpeg';
 import { logoutUser, getSession } from '../services/authService';
 
 const navGroups = [

@@ -17,7 +17,7 @@ import {
   updateTask,
 } from '../services/taskService';
 import { getSubjects, syncSubjects } from '../services/subjectService';
-import { compareByDueDate, getTodayKey, getUpcomingLimitKey } from '../utils/date';
+import { compareByDueDate, getTodayKey, getUpcomingLimitKey, normalizeDateKey } from '../utils/date';
 
 const createInitialForm = (subjects) => ({
   titulo: '',
@@ -50,6 +50,7 @@ export default function Tasks() {
   const [errors, setErrors] = useState({});
   const [filters, setFilters] = useState(initialFilters);
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,11 +65,20 @@ export default function Tasks() {
       if (subjectsResult.ok) {
         setSubjects(subjectsResult.subjects);
         setForm((currentForm) => (currentForm.materiaId ? currentForm : createInitialForm(subjectsResult.subjects)));
+      } else {
+        setFeedback({ type: 'error', message: subjectsResult.message || 'No se pudieron cargar las materias.' });
       }
 
       if (tasksResult.ok) {
         setTasks(tasksResult.tasks);
+        if (tasksResult.message) {
+          setFeedback({ type: tasksResult.fallback ? 'info' : 'success', message: tasksResult.message });
+        }
+      } else {
+        setFeedback({ type: 'error', message: tasksResult.message || 'No se pudieron cargar tus tareas.' });
       }
+
+      setLoading(false);
     };
 
     void loadData();
@@ -109,8 +119,14 @@ export default function Tasks() {
   const completedTasks = tasks.filter((task) => task.estado === 'completada');
   const personalTasks = tasks.filter((task) => task.tipo === 'personal');
   const assignedTasks = tasks.filter((task) => task.tipo === 'asignada');
-  const overdueTasks = pendingTasks.filter((task) => task.fechaEntrega < todayKey);
-  const nextDeliveries = pendingTasks.filter((task) => task.fechaEntrega >= todayKey && task.fechaEntrega <= nextWeekKey);
+  const overdueTasks = pendingTasks.filter((task) => {
+    const dueKey = normalizeDateKey(task.fechaEntrega);
+    return dueKey && dueKey < todayKey;
+  });
+  const nextDeliveries = pendingTasks.filter((task) => {
+    const dueKey = normalizeDateKey(task.fechaEntrega);
+    return dueKey >= todayKey && dueKey <= nextWeekKey;
+  });
 
   const resetForm = () => {
     setForm(createInitialForm(subjects));
@@ -192,7 +208,7 @@ export default function Tasks() {
   };
 
   const handleToggleStatus = async (task) => {
-    const result = await toggleTaskStatus(task.id);
+    const result = await toggleTaskStatus(task);
     if (!result.ok) {
       setFeedback(result.message ? { type: 'error', message: result.message } : null);
       return;
@@ -221,7 +237,9 @@ export default function Tasks() {
         ]}
       />
 
-      {feedback ? (
+      {loading ? (
+        <FeedbackBanner type="info" message="Cargando tareas..." className="mb-6" />
+      ) : feedback ? (
         <FeedbackBanner type={feedback.type} message={feedback.message} className="mb-6" />
       ) : null}
 

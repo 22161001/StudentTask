@@ -29,7 +29,12 @@ const syncSettings = async () => {
     return { ok: true, settings };
   } catch (error) {
     if (isApiFallbackError(error)) {
-      return { ok: true, settings: getSettings() };
+      return {
+        ok: true,
+        settings: getSettings(),
+        message: 'No se pudo cargar la configuración desde el servidor. Se muestran datos locales de respaldo.',
+        fallback: true,
+      };
     }
 
     return {
@@ -56,7 +61,12 @@ const updateSettings = async (changes) => {
   } catch (error) {
     if (isApiFallbackError(error)) {
       const settings = persistSettings(nextSettings);
-      return { ok: true, settings };
+      return {
+        ok: true,
+        settings,
+        message: 'No se pudo conectar con el servidor. La configuración quedó guardada localmente.',
+        fallback: true,
+      };
     }
 
     return {
